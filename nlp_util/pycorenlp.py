@@ -3,7 +3,7 @@
 """
 Python wrapper for Stanford CoreNLP
 ===================================
-Forked from https://github.com/smilli/py-corenlp, deal with unicode and str
+Forked from https://github.com/smilli/py-corenlp, and dealt with unicode and str.
 """
 
 import json

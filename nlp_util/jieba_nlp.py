@@ -3,8 +3,9 @@
 """
 Utility Tools for Jieba
 =======================
-# jieba 结巴分词
+https://github.com/fxsjy/jieba
 
+"Jieba" (Chinese for "to stutter") Chinese text segmentation
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"
@@ -19,7 +20,7 @@ enable_parallel(4)
 from jieba import posseg
 
 
-def tag(cls, text):
+def tag(text):
     """
     
     :param text: 

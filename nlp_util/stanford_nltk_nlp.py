@@ -3,8 +3,10 @@
 """
 Utility Tools for Stanford NLP
 ==============================
-# The NLTK wrapper of stanford nlp postagger, ner and parser,
-# working much slower than the Standford Corenlp Server.
+The NLTK wrapper of stanford nlp postagger, ner and parser
+
+Each calling of functions will evoke an entirely new shell command of java, 
+so these interfaces are much slower than Standford Corenlp Server.
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"
@@ -13,6 +15,9 @@ __license__ = "LGPL-3.0"
 __version__ = "1.0"
 
 import sys
+
+import codecs
+from os import path
 
 if sys.version_info[0] == 2:  # python 2
     # noinspection PyCompatibility,PyUnresolvedReferences
@@ -23,78 +28,123 @@ elif sys.version_info[0] == 3:  # python 3
 
 conf = ConfigParser()
 
-import codecs
-
 with codecs.open('stanford_nltk_nlp.conf', 'r', encoding='utf-8') as f:
     conf.readfp(f)
 cfg = conf.get
-stanford_nlp_dir = cfg('base', 'dir')
+
+
+def set_up_segmenter(lang):
+    if lang in ['zh', 'ar']:
+        from nltk.tokenize.stanford_segmenter import StanfordSegmenter
+        path_to_jar = path.join(cfg('seg', 'path'), cfg('seg', 'path_jar'))
+        path_to_slf4j = path_to_jar  # slf4j cannot be found any more in v3.7
+        path_to_sihan_corpora_dict = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'))
+        path_to_model = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'),
+                                  cfg(lang, 'seg_model'))
+        path_to_dict = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'),
+                                 cfg(lang, 'seg_dict'))
+        # path_to_jar = "stanford-segmenter-3.6.0.jar",
+        # path_to_slf4j = "slf4j-api.jar",
+        # path_to_sihan_corpora_dict = "./data",
+        # path_to_model = "./data/pku.gz",
+        # path_to_dict = "./data/dict-chris6.ser.gz"
+        stanford_tokenizer = StanfordSegmenter(path_to_jar,
+                                               path_to_slf4j,
+                                               path_to_sihan_corpora_dict,
+                                               path_to_model,
+                                               path_to_dict)
+    else:  # if lang in ['en', 'fr', 'es']:
+        from nltk.tokenize.stanford import StanfordTokenizer
+        path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
+        stanford_tokenizer = StanfordTokenizer(path_to_jar)
+    return stanford_tokenizer
+
+
+def set_up_pos_tagger(lang):
+    from nltk.tag.stanford import StanfordPOSTagger
+    path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
+    model_filename = path.join(cfg('pos', 'path'), cfg('pos', 'path_model'),
+                               cfg(lang, 'pos_model'))
+    stanford_pos = StanfordPOSTagger(model_filename, path_to_jar)
+    return stanford_pos
+
+
+def set_up_ner_tagger(lang):
+    from nltk.tag.stanford import StanfordNERTagger
+    path_to_jar = path.join(cfg('ner', 'path'), cfg('ner', 'path_jar'))
+    model_filename = path.join(cfg('ner', 'path'), cfg('ner', 'path_model'),
+                               cfg(lang, 'ner_model'))
+    stanford_ner = StanfordNERTagger(model_filename, path_to_jar)
+    return stanford_ner
+
+
+def set_up_parser(lang):
+    # from nltk.kernel.stanford import StanfordParser
+
+    # path_to_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_jar'))
+    # path_to_models_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_model_jar'))
+    # model_path = path.join(cfg('parser', 'model_path'), cfg(self._lang, 'parser_model'))
+    # self.stanford_parser = StanfordParser(path_to_jar, path_to_models_jar, model_path)
+    # print(list(stanford_parser.raw_parse(text)))
+    # for sent_tree in stanford_parser.raw_parse(text):
+    #     sent_tree.draw()
+
+    from nltk.parse.stanford import StanfordDependencyParser
+    path_to_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_jar'))
+    path_to_models_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_model_jar'))
+    model_path = path.join(cfg('parser', 'model_path'), cfg(lang, 'parser_model'))
+    stanford_parser = StanfordDependencyParser(path_to_jar, path_to_models_jar, model_path)
+    # for dep_graph in stanford_parser.raw_parse(text):
+    #     print dep_graph
+    #     dep_graph.tree().draw()
+    return stanford_parser
 
 
 class StanfordNLP(object):
-    def __init__(self, lang='en', parse=True):
-        if lang in ['en', 'zh']:
-            self._lang = lang
-        else:
-            raise ValueError('not supported %s language' % lang)
+    def __init__(self, lang='en'):
+        if lang not in ['en', 'zh']:
+            raise ValueError('not supported `%s` language' % lang)
+        self._lang = lang
         self.stanford_tokenizer = None
         self.stanford_pos = None
         self.stanford_ner = None
         self.stanford_parser = None
 
-    def setup_tag(self):
-        from nltk.tokenize.stanford import StanfordTokenizer
-        path_to_jar = stanford_nlp_dir + '/' + cfg('pos', 'path_jar') + '/' + cfg('pos', 'name_jar')
-        self.stanford_tokenizer = StanfordTokenizer(path_to_jar)
+    def _init_tagger(self):
+        if self.stanford_tokenizer is None:
+            self.stanford_tokenizer = set_up_segmenter(self._lang)
+        if self.stanford_pos is None:
+            self.stanford_pos = set_up_pos_tagger(self._lang)
+        if self.stanford_ner is None:
+            self.stanford_ner = set_up_ner_tagger(self._lang)
+        if self.stanford_parser is None:
+            self.stanford_parser = set_up_parser(self._lang)
 
-        from nltk.tag.stanford import StanfordPOSTagger
-        path_to_jar = stanford_nlp_dir + '/' + cfg('pos', 'path_jar') + '/' + cfg('pos', 'name_jar')
-        model_filename = (stanford_nlp_dir + '/' + cfg('pos', 'path_model') + '/' +
-                          cfg(self._lang, 'pos_model'))
-        self.stanford_pos = StanfordPOSTagger(model_filename, path_to_jar)
+    def _init_paser(self):
+        if self.stanford_tokenizer is None:
+            self.stanford_tokenizer = set_up_segmenter(self._lang)
+        if self.stanford_parser is None:
+            self.stanford_parser = set_up_parser(self._lang)
 
-        from nltk.tag.stanford import StanfordNERTagger
-        path_to_jar = stanford_nlp_dir + '/' + cfg('ner', 'path_jar') + '/' + cfg('ner', 'name_jar')
-        model_filename = (stanford_nlp_dir + '/' + cfg('ner', 'path_model') + '/' +
-                          cfg(self._lang, 'ner_model'))
-        self.stanford_ner = StanfordNERTagger(model_filename, path_to_jar)
-
-    def setup_parser(self):
-        # from nltk.parse.stanford import StanfordParser
-
-        # path_to_jar = (stanford_nlp_dir + '/' + cfg('parser','path_jar') + '/' + 
-        #                cfg('parser','name_jar'))
-        # path_to_models_jar = (stanford_nlp_dir + '/' + cfg('parser','path_model_jar') + '/' + 
-        #                       cfg('parser','name_model_jar'))
-        # model_path = cfg('parser', 'model_path') + '/' + cfg(self._lang, 'parser_model')
-        # self.stanford_parser = StanfordParser(path_to_jar, path_to_models_jar, model_path)
-        # print(list(stanford_parser.raw_parse(text)))
-        # for sent_tree in stanford_parser.raw_parse(text):
-        #     sent_tree.draw()
-
-        from nltk.parse.stanford import StanfordDependencyParser
-        path_to_jar = (stanford_nlp_dir + '/' + cfg('parser', 'path_jar') + '/' +
-                       cfg('parser', 'name_jar'))
-        path_to_models_jar = (stanford_nlp_dir + '/' + cfg('parser', 'path_model_jar') + '/' +
-                              cfg('parser', 'name_model_jar'))
-        model_path = cfg('parser', 'model_path') + '/' + cfg(self._lang, 'parser_model')
-        self.stanford_parser = StanfordDependencyParser(path_to_jar, path_to_models_jar, model_path)
-        # for dep_graph in stanford_parser.raw_parse(text):
-        #     print dep_graph
-        #     dep_graph.tree().draw()
-
-    def tag(self, text):
+    def tag(self, doc):
         """
         
-        :param text: 
-        :return: 
+        :param doc: 
+        :return: yield [(word, pos ,ner), ...] of a sentence
         """
-        word_list = self.stanford_tokenizer.tokenize(text)
-        word_pos_list = self.stanford_pos.tag(word_list)
-        word_ner_list = self.stanford_ner.tag(word_list)
-        word_pos_ner_list = zip(word_list, zip(*word_pos_list)[1], zip(*word_ner_list)[1])
-        return word_pos_ner_list
+        self._init_tagger()
+        for word_list in self.stanford_tokenizer.tokenize_sents(doc):
+            word_pos_list = self.stanford_pos.tag(word_list)
+            word_ner_list = self.stanford_ner.tag(word_list)
+            word_pos_ner_list = zip(word_list, zip(*word_pos_list)[1], zip(*word_ner_list)[1])
+            yield word_pos_ner_list
 
+    def parse(self):
+        self._init_paser()
+        pass
+
+# for reference
+#
 # import os
 #
 # stanford_nlp_dir = '/Volumes/Documents/Projects/~stanford_nlp'
@@ -140,7 +190,7 @@ class StanfordNLP(object):
 # stanford_ner = StanfordNERTagger(model_name_ner)
 # word_ner_list = stanford_ner.tag(word_list)
 #
-# from nltk.parse.stanford import StanfordDependencyParser
+# from nltk.kernel.stanford import StanfordDependencyParser
 #
 # stanford_parser = StanfordDependencyParser()
-# print [list(parse.triples()) for parse in stanford_parser.raw_parse(text)]
+# print [list(kernel.triples()) for kernel in stanford_parser.raw_parse(text)]

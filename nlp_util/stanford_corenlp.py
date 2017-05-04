@@ -3,8 +3,9 @@
 """
 Utility Tools for Stanford CoreNLP Server
 =========================================
-# standford_corenlp_server
+https://stanfordnlp.github.io/CoreNLP/
 
+Stanford CoreNLP – Core natural language software
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"
@@ -17,22 +18,23 @@ import os
 from pycorenlp import StanfordCoreNLP
 
 
-class StanfordCoreNLP(object):
-    def __init__(self, lang='en'):  # lang = 'zh'
-        self._stanford_nlp = None
-        self._raw_output = None
-        self._tagged_list = None
-        self._dep_list = None
-        self._arcs_dependent_governor = None
-        self._graph_arcs_head_children = None
+def _tagged_tuple(token):
+    # (word, pos, ner, speaker, lemma)
+    return token['word'], token['pos'], token['ner'], token['speaker'], token['lemma']
 
-        def __enter__(self):
-            self.set_up(lang)
-            self._stanford_nlp = StanfordCoreNLP('http://localhost:9000')
-            return self
 
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.tear_down()
+class StanfordNLP(object):
+    def __init__(self, server_url='http://localhost:9000', lang='en'):  # lang = 'zh'
+        self._stanford_nlp = StanfordCoreNLP(server_url)
+        self._lang = lang
+
+    def __enter__(self):
+        self.set_up(self._lang)
+        return self
+
+    # noinspection PyUnusedLocal
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.tear_down()
 
     @classmethod
     def set_up(cls, lang):
@@ -46,127 +48,164 @@ class StanfordCoreNLP(object):
         os.system(os.path.join(os.path.dirname(__file__),
                                'sh stanford_corenlp_server_stop.sh'))
 
-    def _parse(self, text):
-        corenlp_result = self._stanford_nlp.annotate(text, properties={
-            'annotators': 'tokenize, ssplit, pos, lemma, ner, parse, dcoref',
+    def kernel(self, doc, parsing=True):
+        if parsing:
+            conf = 'tokenize, ssplit, pos, lemma, ner, parse, dcoref'  # ssplit = sent split
+        else:
+            conf = 'tokenize, ssplit, pos, lemma, ner'
+
+        # call stanford corenlp server
+        corenlp_doc = self._stanford_nlp.annotate(doc, properties={
+            'annotators': conf,
             'outputFormat': 'json'
         })
 
-        # # result
-        # print corenlp_result['sentences'][0].keys()
+        # # corenlp_doc
+        # print(corenlp_doc['sentences'][0].keys())
         # [u'tokens', u'index', u'parse',
         #  u'basicDependencies', u'enhancedDependencies', u'enhancedPlusPlusDependencies']
+        return corenlp_doc
 
-        # # parse
-        # print(corenlp_result['sentences'][0]['parse'])
-        # from nltk.tree import Tree
-        #
-        # sent_tree = Tree.fromstring(corenlp_result['sentences'][0]['parse'])
-        # sent_tree.draw()
-
-        self._raw_output = corenlp_result
-        return self._raw_output
-
-    def tag(self):
+    def tag(self, doc):
         # tokens
-        # print self._raw_output['sentences'][0]['tokens'][0].keys()
+        # print corenlp_doc['sentences'][0]['tokens'][0].keys()
         # [u'index', u'word', u'lemma', u'originalText', u'pos', u'before', u'after',
         #  u'characterOffsetEnd', u'characterOffsetBegin', u'ner', u'speaker']
-        tagged_list = [(t['word'], t['pos'], t['ner'], t['speaker'], t['lemma']) for t in
-                       self._raw_output['sentences'][0]['tokens']]
-        return tagged_list
+        corenlp_doc = self.kernel(doc, parsing=False)
+        for parsed_sent in corenlp_doc['sentences']:
+            tagged_list = [_tagged_tuple(t) for t in parsed_sent['tokens']]
+            yield tagged_list
+
+    def parse(self, doc):
+        corenlp_doc = self.kernel(doc, parsing=True)
+        for corenlp_sent in corenlp_doc['sentences']:
+            yield SentDependency(corenlp_sent)
 
 
-    def dep(self):
-        # dependencies
+class SentDependency(object):
+    # parse
+    # print(self.corenlp_doc['sentences'][0]['parse'])
+    # from nltk.tree import Tree
+    #
+    # sent_tree = Tree.fromstring(self.corenlp_doc['sentences'][0]['kernel'])
+    # sent_tree.draw()
+    def __init__(self, corenlp_sent):
+        self.corenlp_sent = corenlp_sent
+
+        # dependency vertices
+        # tokens
+        self.tagged_list = [_tagged_tuple(t) for t in corenlp_sent['tokens']]
+        self._sent_length = len(self.tagged_list)
+        # dependency arcs
         # basicDependencies, enhancedDependencies, enhancedPlusPlusDependencies
-        dependencies = self._raw_output['sentences'][0]['enhancedPlusPlusDependencies']
-        self._arcs_dependent_governor = [list() for _ in range(len(self._tagged_list))]
-        self._graph_arcs_head_children = dict()
-        for d in dependencies:
+        self._dep_list = None
+        self._dependencies = corenlp_sent['enhancedDependencies']
+
+        # dependency graph
+        # root: of the first tree
+        self._root_index = -1
+        # arcs: from tail to head
+        self._arcs_child_heads = [list() for _ in range(self._sent_length)]
+        # arcs: from head to tail
+        self._graph_head_children = dict()
+        for d in self._dependencies:
             dependent_i = d['dependent'] - 1
-            dep_name = d['dep']
+            dep_name = d['get_dep_list']
             governor_i = d['governor'] - 1
-            arc_length = abs(dependent_i - governor_i) if governor_i > 0 else 0
-            self._arcs_dependent_governor[dependent_i].append((arc_length, dep_name, governor_i))
-            self._graph_arcs_head_children.setdefault(governor_i, list()).append((dependent_i, dep_name))
-
-        for head in self._graph_arcs_head_children:
-            self._graph_arcs_head_children[head].sort()
-
-        def left_edge(index):
-            left = index
-            while True:
-                children = graph_arcs_head_children.get(left, None)
-                if children and (children[0][0] < left or left < 0):
-                    left = children[0][0]
+            if governor_i > 0:
+                arc_length = abs(dependent_i - governor_i)
+            else:  # governor_i = -1
+                arc_length = 0
+                if self._root_index == -1:
+                    self.root_index = dependent_i
                 else:
-                    break
-            return left
+                    self.root_index = min(dependent_i, self._root_index)
+            self._arcs_child_heads[dependent_i].append((arc_length, dep_name, governor_i))
+            self._graph_head_children.setdefault(governor_i, list()).append((dependent_i, dep_name))
+        for head in self._graph_head_children:
+            self._graph_head_children[head].sort()
 
-        def right_edge(index):
-            right = index
-            while True:
-                children = graph_arcs_head_children.get(right, None)
-                if children and right < children[-1][0]:
-                    right = children[-1][0]
-                else:
-                    break
-            return right
+        # tree formatter
+        self._tree_func = _format_tree
+        # noinspection PyCompatibility
+        self._leaf_func = lambda token: '/'.join([token[0].replace('(', u'（').replace('(', u'）'),
+                                                  token[1].replace('(', u'（').replace('(', u'）')])
 
-        dep_list = []
-        for dependent_i, arc_list in enumerate(self._arcs_dependent_governor):
-            arc_shortest = sorted(arc_list)[0] if len(arc_list) > 1 else arc_list[0]
-            dep_name = arc_shortest[1]
-            governor_i = arc_shortest[2]
-            dep_list.append((dep_name,  # dep_name name
-                             governor_i if governor_i > 0 else dependent_i,  # head
-                             left_edge(governor_i),  # left_edge
-                             right_edge(governor_i) + 1  # right_edge + 1
-                             ))
+    @property
+    def dep_list(self):
+        if self._dep_list is None:
+            self._dep_list = []
+            for dependent_i, arc_list in enumerate(self._arcs_child_heads):
+                arc_shortest = sorted(arc_list)[0] if len(arc_list) > 1 else arc_list[0]
+                dep_name = arc_shortest[1]
+                governor_i = arc_shortest[2]
+                self._dep_list.append((dep_name,  # dep name
+                                       governor_i if governor_i > 0 else dependent_i,  # head
+                                       self.left_edge(governor_i),  # left_edge
+                                       self.right_edge(governor_i)  # right_edge
+                                       ))
+        return self._dep_list
 
-        return dep_list
+    def left_edge(self, index):
+        left = index
+        while True:
+            children = self._graph_head_children.get(left, None)
+            if children and (children[0][0] < left or left < 0):
+                left = children[0][0]
+            else:
+                break
+        if left < 0:
+            raise ValueError('index out of range')
+        return left
 
-    def _spanning_tree(self, node_visiting_list, node_index, node_name='ROOT',
-                      construct_tree_func=format_tree,
-                      construct_leaf_func=format_leaf):
-        node_visiting_list[node_index] = 'V'
+    def right_edge(self, index):
+        right = index
+        while True:
+            children = self._graph_head_children.get(right, None)
+            if children and right < children[-1][0]:
+                right = children[-1][0]
+            else:
+                break
+        if right > self._sent_length:
+            raise ValueError('index out of range')
+        return right
+
+    def get_dep_tree(self, index=-1):
+        if index < -1 or index >= self._sent_length:
+            raise ValueError('index out of range')
+        elif index == -1:
+            if self._root_index == -1:
+                return None
+            else:
+                index = self._root_index
+        graph_vertex_status = ['O'] * self._sent_length
+        return self._spanning_tree(graph_vertex_status, index)
+        # Tree.fromstring(get_dep_tree()).draw()
+
+    def _spanning_tree(self, visiting_array, node_index, node_name='ROOT'):
+        visiting_array[node_index] = 'V'
         root = node_name  # dep_name
         subtrees = []
-        leaf = construct_leaf_func(self._tagged_list[node_index])
-        if node_index not in self._graph_arcs_head_children:
+        leaf = self._leaf_func(self.tagged_list[node_index])
+        if node_index not in self._graph_head_children:
             subtrees.append(leaf)
         else:
-            subtrees.append(construct_tree_func('^', [leaf]))
-            left_tree_pos = 0
-            for child_i, child_name in self._graph_arcs_head_children[node_index]:
-                if node_visiting_list[child_i] == 'V':
+            subtrees.append(self._tree_func('^', [leaf]))
+            this_pos = 0
+            for child_i, child_name in self._graph_head_children[node_index]:
+                if visiting_array[child_i] == 'V':
+                    # has already visited
                     continue
-                subtree = self._spanning_tree(node_visiting_list, child_i, child_name)
+                subtree = self._spanning_tree(visiting_array, child_i, child_name)
                 if child_i < node_index:
-                    subtrees.insert(left_tree_pos, subtree)
-                    left_tree_pos += 1
+                    subtrees.insert(this_pos, subtree)
+                    this_pos += 1
                 elif child_i > node_index:
                     subtrees.append(subtree)
-        return construct_tree_func(root, subtrees)
+        return self._tree_func(root, subtrees)
 
 
-    def get_dep_tree_str(self, index):
-        graph_vertex_status = ['O'] * len(self._dep_list)
-        return self._spanning_tree(graph_vertex_status, index)
-
-
-
-def format_tree(root, subtree_list):
+def _format_tree(root, subtree_list):
     return '(' + root + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
-
-
-def format_leaf(token):
-    return '/'.join([token[0].replace('(', u'（').replace('(', u'）'),
-                     token[1].replace('(', u'（').replace('(', u'）')])
-
-
-
-sent_tree = get_dep_tree_str(-1)
-from nltk.tree import Tree
-Tree.fromstring(sent_tree).draw()
+    # from nltk.tree import Tree
+    # return Tree(root, subtree_list)

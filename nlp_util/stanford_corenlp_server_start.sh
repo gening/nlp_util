@@ -14,7 +14,7 @@ stanford_corenlp_models="/Volumes/Documents/Projects/~stanford_nlp/stanford-core
 
 # set language
 if [[ $# == 1 ]] && [[ $1 == "zh" ]]; then
-    lang="-serverProperties StanfordCoreNLP-chinese.properties"
+    lang="-serverProperties StanfordNLP-chinese.properties"
 else
     lang=""
 fi
