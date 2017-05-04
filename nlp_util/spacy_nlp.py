@@ -33,27 +33,27 @@ class SpaCyNLP(object):
             spacy_doc = self._spacy_nlp(doc, parse=False)
         return spacy_doc
 
-    def tag(self, doc):
-        spacy_doc = self.kernel(doc, parsing=False)
-        for spacy_sent in spacy_doc.sents:
-            tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_sent]
-            yield tagged_list
+    def tag(self, text):
+        # sentence boundary detection requires the dependency parse
+        spacy_doc = self.kernel(text, parsing=False)
+        tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_doc]
+        return tagged_list
 
-    def parse(self, doc):
+    def parse_sents(self, doc):
         spacy_doc = self.kernel(doc)
         for spacy_sent in spacy_doc.sents:
-            yield SentDependency(spacy_sent)
+            yield ParsedSent(spacy_sent)
 
 
-class SentDependency(object):
+class ParsedSent(object):
     def __init__(self, spacy_sent):
         self.spacy_sent = spacy_sent
         self._offset = spacy_sent.start
         self.tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_sent]
         self.dep_list = [(t.dep_,  # dep name
                           t.head.i - self._offset,  # head
-                          t.left_edge.i - self._offset,  # left_edge
-                          t.right_edge.i - self._offset  # right_edge
+                          t.left_edge.i - self._offset,  # start = left_edge
+                          t.right_edge.i - self._offset + 1  # end = right_edge + 1
                           ) for t in spacy_sent]
         self._tree_func = _format_tree
         self._leaf_func = lambda token: '/'.join([token.orth_, token.tag_])
@@ -67,19 +67,20 @@ class SentDependency(object):
         return space_token.right_edge.i - self._offset
 
     def get_dep_tree(self, index=-1):
-        if index == -1:
+        if index < -1 or index >= self.spacy_sent.end - self.spacy_sent.start:
+            raise ValueError('index out of range')
+        elif index == -1:
             # If there's a forest, the earliest is preferred
             spacy_token = self.spacy_sent.root
         else:
-            spacy_token = self.spacy_sent[index]  # fixme: index out of range
-        # if index < -1 or index > self.spacy_sent.end - self.spacy_sent.start:
-        #     raise ValueError('index out of range')
-        graph_vertex_status = ['O'] * (self.spacy_sent.end - self.spacy_sent.start + 1)
+            spacy_token = self.spacy_sent[index]
+        graph_vertex_status = ['O'] * (self.spacy_sent.end - self.spacy_sent.start)
         return self._spanning_tree(graph_vertex_status, spacy_token)
+        # from nltk.tree import Tree
         # Tree.fromstring(get_dep_tree()).draw()
 
     def _spanning_tree(self, visiting_array, node):
-        if self.spacy_sent.start <= node.i <= self.spacy_sent.start.end:
+        if self.spacy_sent.start <= node.i < self.spacy_sent.end:
             index = node.i - self._offset
             if visiting_array[index] != 'V':
                 visiting_array[index] = 'V'

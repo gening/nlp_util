@@ -14,15 +14,18 @@ stanford_corenlp_models="/Volumes/Documents/Projects/~stanford_nlp/stanford-core
 
 # set language
 if [[ $# == 1 ]] && [[ $1 == "zh" ]]; then
-    lang="-serverProperties StanfordNLP-chinese.properties"
+    lang="-serverProperties StanfordCoreNLP-chinese.properties"
 else
     lang=""
 fi
 
 # start server
 java -mx4g -cp "${stanford_corenlp_path}/*:${stanford_corenlp_models}/*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer ${lang} -port 9000 &
+exit_code=$?
 
-# wait until server starts
-while ! nc -z localhost 9000; do
-    sleep 0.1 # wait for 1/10 of the second before check again
-done
+if [[ ${exit_code} == 0 ]]; then
+    # wait until server starts
+    while ! nc -z localhost 9000; do
+        sleep 0.1 # wait for 1/10 of the second before check again
+    done
+fi

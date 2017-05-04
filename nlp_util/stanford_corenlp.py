@@ -13,20 +13,26 @@ __copyright__ = "Copyright (C) 2017 GE Ning"
 __license__ = "LGPL-3.0"
 __version__ = "1.0"
 
+import sys
+
 import os
 
 from pycorenlp import StanfordCoreNLP
 
 
 def _tagged_tuple(token):
-    # (word, pos, ner, speaker, lemma)
-    return token['word'], token['pos'], token['ner'], token['speaker'], token['lemma']
+    # [word, pos, ner, speaker, lemma]
+    token_tuple = []
+    for key in ['word', 'pos', 'ner', 'speaker', 'lemma']:
+        if key in token:
+            token_tuple.append(token[key])
+    return token_tuple
 
 
 class StanfordNLP(object):
-    def __init__(self, server_url='http://localhost:9000', lang='en'):  # lang = 'zh'
-        self._stanford_nlp = StanfordCoreNLP(server_url)
+    def __init__(self, lang='en', server_url='http://localhost:9000'):  # lang = 'zh'
         self._lang = lang
+        self._stanford_nlp = StanfordCoreNLP(server_url)
 
     def __enter__(self):
         self.set_up(self._lang)
@@ -40,15 +46,19 @@ class StanfordNLP(object):
     def set_up(cls, lang):
         # start service
         os.system(os.path.join(os.path.dirname(__file__),
-                               'sh stanford_corenlp_server_start.sh %s' % lang))
+                               'stanford_corenlp_server_start.sh %s' % lang))
 
     @classmethod
     def tear_down(cls):
         # stop service
         os.system(os.path.join(os.path.dirname(__file__),
-                               'sh stanford_corenlp_server_stop.sh'))
+                               'stanford_corenlp_server_stop.sh'))
 
     def kernel(self, doc, parsing=True):
+        # conf params
+        # tokenize, ssplit, pos, lemma, ner,
+        # depparse, parse, sentiment, natlog, mention, entitymentions, coref, dcoref,
+        # openie
         if parsing:
             conf = 'tokenize, ssplit, pos, lemma, ner, parse, dcoref'  # ssplit = sent split
         else:
@@ -66,7 +76,7 @@ class StanfordNLP(object):
         #  u'basicDependencies', u'enhancedDependencies', u'enhancedPlusPlusDependencies']
         return corenlp_doc
 
-    def tag(self, doc):
+    def tag_sents(self, doc):
         # tokens
         # print corenlp_doc['sentences'][0]['tokens'][0].keys()
         # [u'index', u'word', u'lemma', u'originalText', u'pos', u'before', u'after',
@@ -76,13 +86,17 @@ class StanfordNLP(object):
             tagged_list = [_tagged_tuple(t) for t in parsed_sent['tokens']]
             yield tagged_list
 
-    def parse(self, doc):
+    def parse_sents(self, doc):
         corenlp_doc = self.kernel(doc, parsing=True)
-        for corenlp_sent in corenlp_doc['sentences']:
-            yield SentDependency(corenlp_sent)
+        if isinstance(corenlp_doc, dict):
+            for corenlp_sent in corenlp_doc['sentences']:
+                yield ParsedSent(corenlp_sent)
+        else:
+            # parsing has failed, and corenlp_doc is the error message.
+            sys.stderr.write(corenlp_doc)
 
 
-class SentDependency(object):
+class ParsedSent(object):
     # parse
     # print(self.corenlp_doc['sentences'][0]['parse'])
     # from nltk.tree import Tree
@@ -110,16 +124,16 @@ class SentDependency(object):
         self._graph_head_children = dict()
         for d in self._dependencies:
             dependent_i = d['dependent'] - 1
-            dep_name = d['get_dep_list']
+            dep_name = d['dep']
             governor_i = d['governor'] - 1
             if governor_i > 0:
                 arc_length = abs(dependent_i - governor_i)
             else:  # governor_i = -1
                 arc_length = 0
                 if self._root_index == -1:
-                    self.root_index = dependent_i
+                    self._root_index = dependent_i
                 else:
-                    self.root_index = min(dependent_i, self._root_index)
+                    self._root_index = min(dependent_i, self._root_index)
             self._arcs_child_heads[dependent_i].append((arc_length, dep_name, governor_i))
             self._graph_head_children.setdefault(governor_i, list()).append((dependent_i, dep_name))
         for head in self._graph_head_children:
@@ -141,8 +155,8 @@ class SentDependency(object):
                 governor_i = arc_shortest[2]
                 self._dep_list.append((dep_name,  # dep name
                                        governor_i if governor_i > 0 else dependent_i,  # head
-                                       self.left_edge(governor_i),  # left_edge
-                                       self.right_edge(governor_i)  # right_edge
+                                       self.left_edge(governor_i),  # start = left_edge
+                                       self.right_edge(governor_i) + 1  # end = right_edge
                                        ))
         return self._dep_list
 
@@ -180,6 +194,7 @@ class SentDependency(object):
                 index = self._root_index
         graph_vertex_status = ['O'] * self._sent_length
         return self._spanning_tree(graph_vertex_status, index)
+        # from nltk.tree import Tree
         # Tree.fromstring(get_dep_tree()).draw()
 
     def _spanning_tree(self, visiting_array, node_index, node_name='ROOT'):

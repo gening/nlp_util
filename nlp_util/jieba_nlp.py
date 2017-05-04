@@ -15,7 +15,7 @@ __version__ = "1.0"
 
 from jieba import enable_parallel
 
-enable_parallel(4)
+enable_parallel(4)  # fixme: disable_parallel()
 
 from jieba import posseg
 

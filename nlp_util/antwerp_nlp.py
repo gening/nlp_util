@@ -3,7 +3,7 @@
 """
 Utility Tools for Pattern.en
 ============================
-http://www.clips.ua.ac.be/pages/pattern-en
+http://www.antwerp.ua.ac.be/pages/pattern-en
 
 CLiPS (Computational Linguistics & Psycholinguistics) is a research center 
 of University of Antwerp, Belgium.
@@ -32,7 +32,7 @@ def kernel(text, parsing=True):
     return tagged_str
 
 
-def tag(doc):
+def tag_sents(doc):
     """
     
     :param doc: 
@@ -47,11 +47,16 @@ def tag(doc):
         yield tagged_list
 
 
-def parse(doc):
+def parse_sents(doc):
     tagged_str = kernel(doc, parsing=True)
-    parsed_sents = pattern.en.tree(tagged_str)
+    antwerp_sent_list = pattern.en.tree(tagged_str)
 
-    for parsed_sent in parsed_sents:
+    for antwerp_sent in antwerp_sent_list:
+        yield ParsedSent(antwerp_sent)
+
+
+class ParsedSent(object):
+    def __init__(self, antwerp_sent):
         # [(word, pos, chunk, pnp-chunk, chunk-rol-relation, lemma), ...]
         tagged_list = [[w.string, w.type,
                         ('B-' if w.index == w.chunk.start else 'I-') + w.chunk.type
@@ -62,22 +67,25 @@ def parse(doc):
                         '-' + str(w.chunk.relation)
                         if w.chunk and w.chunk.relation else 'O',
                         w.lemma]
-                       for w in parsed_sent.words]
+                       for w in antwerp_sent.words]
+        self.antwerp_sent = antwerp_sent
+        self.tagged_list = tagged_list
 
+    def get_rdf_triples(self):
         # print(parsed_sent.relations)
         rdf_triples = []
         rel_list = ['SBJ', 'VP', 'OBJ']
-        for i in range(1, max(map(len, map(parsed_sent.relations.get, rel_list))) + 1):
+        for i in range(1, max(map(len, map(self.antwerp_sent.relations.get, rel_list))) + 1):
             triple = []
             for rel in rel_list:
-                chunk = parsed_sent.relations[rel].get(i, None)
+                chunk = self.antwerp_sent.relations[rel].get(i, None)
                 if chunk:
                     triple.append(_format_tokens(chunk.words))
                 else:
                     triple.append(None)
             if triple != [None, None, None]:
                 rdf_triples.append(tuple(triple))
-        yield (tagged_list, rdf_triples)
+        return rdf_triples
 
 
 def _format_tokens(tokens):

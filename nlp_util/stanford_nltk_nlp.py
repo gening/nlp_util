@@ -28,12 +28,13 @@ elif sys.version_info[0] == 3:  # python 3
 
 conf = ConfigParser()
 
-with codecs.open('stanford_nltk_nlp.conf', 'r', encoding='utf-8') as f:
+with codecs.open(path.join(path.dirname(__file__), 'stanford_nltk_nlp.conf'),
+                 'r', encoding='utf-8') as f:
     conf.readfp(f)
 cfg = conf.get
 
 
-def set_up_segmenter(lang):
+def set_up_seg(lang):
     if lang in ['zh', 'ar']:
         from nltk.tokenize.stanford_segmenter import StanfordSegmenter
         path_to_jar = path.join(cfg('seg', 'path'), cfg('seg', 'path_jar'))
@@ -48,37 +49,44 @@ def set_up_segmenter(lang):
         # path_to_sihan_corpora_dict = "./data",
         # path_to_model = "./data/pku.gz",
         # path_to_dict = "./data/dict-chris6.ser.gz"
-        stanford_tokenizer = StanfordSegmenter(path_to_jar,
+        stanford_segmenter = StanfordSegmenter(path_to_jar,
                                                path_to_slf4j,
                                                path_to_sihan_corpora_dict,
                                                path_to_model,
                                                path_to_dict)
+        stanford_tokenize_func = (lambda text: stanford_segmenter.segment(text).split())
     else:  # if lang in ['en', 'fr', 'es']:
         from nltk.tokenize.stanford import StanfordTokenizer
         path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
-        stanford_tokenizer = StanfordTokenizer(path_to_jar)
-    return stanford_tokenizer
+        stanford_tokenize_func = StanfordTokenizer(path_to_jar).tokenize
+    return stanford_tokenize_func
 
 
-def set_up_pos_tagger(lang):
+def set_up_pos_tag(lang):
     from nltk.tag.stanford import StanfordPOSTagger
     path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
     model_filename = path.join(cfg('pos', 'path'), cfg('pos', 'path_model'),
                                cfg(lang, 'pos_model'))
-    stanford_pos = StanfordPOSTagger(model_filename, path_to_jar)
-    return stanford_pos
+    stanford_postagger = StanfordPOSTagger(model_filename, path_to_jar)
+    if lang in ['zh']:
+        # [('', u'中文#NN'), ...]
+        stanford_pos_func = (lambda word_list:
+                             [t[1].split('#') for t in stanford_postagger.tag(word_list)])
+    else:
+        stanford_pos_func = stanford_postagger.tag
+    return stanford_pos_func
 
 
-def set_up_ner_tagger(lang):
+def set_up_ner_tag(lang):
     from nltk.tag.stanford import StanfordNERTagger
     path_to_jar = path.join(cfg('ner', 'path'), cfg('ner', 'path_jar'))
     model_filename = path.join(cfg('ner', 'path'), cfg('ner', 'path_model'),
                                cfg(lang, 'ner_model'))
-    stanford_ner = StanfordNERTagger(model_filename, path_to_jar)
-    return stanford_ner
+    stanford_ner_func = StanfordNERTagger(model_filename, path_to_jar).tag
+    return stanford_ner_func
 
 
-def set_up_parser(lang):
+def set_up_parse(lang):
     # from nltk.kernel.stanford import StanfordParser
 
     # path_to_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_jar'))
@@ -105,42 +113,42 @@ class StanfordNLP(object):
         if lang not in ['en', 'zh']:
             raise ValueError('not supported `%s` language' % lang)
         self._lang = lang
-        self.stanford_tokenizer = None
-        self.stanford_pos = None
-        self.stanford_ner = None
-        self.stanford_parser = None
+        self.stanford_token_seg = None
+        self.stanford_pos_tag = None
+        self.stanford_ner_tag = None
+        self.stanford_parse = None
 
-    def _init_tagger(self):
-        if self.stanford_tokenizer is None:
-            self.stanford_tokenizer = set_up_segmenter(self._lang)
-        if self.stanford_pos is None:
-            self.stanford_pos = set_up_pos_tagger(self._lang)
-        if self.stanford_ner is None:
-            self.stanford_ner = set_up_ner_tagger(self._lang)
-        if self.stanford_parser is None:
-            self.stanford_parser = set_up_parser(self._lang)
+    def set_up_tag_func(self):
+        if self.stanford_token_seg is None:
+            self.stanford_token_seg = set_up_seg(self._lang)
+        if self.stanford_pos_tag is None:
+            self.stanford_pos_tag = set_up_pos_tag(self._lang)
+        if self.stanford_ner_tag is None:
+            self.stanford_ner_tag = set_up_ner_tag(self._lang)
+        if self.stanford_parse is None:
+            self.stanford_parse = set_up_parse(self._lang)
 
-    def _init_paser(self):
-        if self.stanford_tokenizer is None:
-            self.stanford_tokenizer = set_up_segmenter(self._lang)
-        if self.stanford_parser is None:
-            self.stanford_parser = set_up_parser(self._lang)
+    def set_up_parse_func(self):
+        if self.stanford_token_seg is None:
+            self.stanford_token_seg = set_up_seg(self._lang)
+        if self.stanford_parse is None:
+            self.stanford_parse = set_up_parse(self._lang)
 
-    def tag(self, doc):
+    def tag(self, text):
         """
         
-        :param doc: 
+        :param text: 
         :return: yield [(word, pos ,ner), ...] of a sentence
         """
-        self._init_tagger()
-        for word_list in self.stanford_tokenizer.tokenize_sents(doc):
-            word_pos_list = self.stanford_pos.tag(word_list)
-            word_ner_list = self.stanford_ner.tag(word_list)
-            word_pos_ner_list = zip(word_list, zip(*word_pos_list)[1], zip(*word_ner_list)[1])
-            yield word_pos_ner_list
+        self.set_up_tag_func()
+        word_list = self.stanford_token_seg(text)
+        word_pos_list = self.stanford_pos_tag(word_list)
+        word_ner_list = self.stanford_ner_tag(word_list)
+        word_pos_ner_list = zip(word_list, zip(*word_pos_list)[1], zip(*word_ner_list)[1])
+        return word_pos_ner_list
 
     def parse(self):
-        self._init_paser()
+        self.set_up_parse_func()
         pass
 
 # for reference

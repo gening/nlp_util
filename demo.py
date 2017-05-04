@@ -8,7 +8,8 @@ Input: string
 Output: [(word, pos, ...), (word, pos, ...), ...]
 """
 # todo: test
-# todo: dependencies parse of stanford nltk
+# todo: dependencies parse of stanford nltk and corenlp of zh use neural dependency parser
+# fixme: jieba.disable_parallel()
 # todo: syntaxnet
 # TextBlob
 # use NLTK and pattern.en library.
@@ -17,6 +18,8 @@ __author__ = "GE Ning <https://github.com/gening/>"
 __copyright__ = "Copyright (C) 2017 GE Ning"
 __license__ = "LGPL-3.0"
 __version__ = "1.0"
+
+from pprint import pprint
 
 # noinspection PyCompatibility
 doc_en = (u'Vincent Willem van Gogh was a Dutch Post-Impressionist painter '
@@ -42,3 +45,128 @@ doc_zh = (u'莫奈（Claude Monet，1840年11月14日－1926年12月5日），'
 # noinspection PyCompatibility
 sent_zh = (u'莫奈（Claude Monet，1840年11月14日－1926年12月5日），'
            u'是法国最重要的画家之一，被誉为“印象派领导者”。')
+
+
+def test_jieba_nlp_zh():
+    from nlp_util import jieba_nlp
+
+    tagged_list = jieba_nlp.tag(sent_zh)
+    print_result(tagged_list)
+
+
+def test_nltk_nlp_en():
+    from nlp_util import nltk_nlp
+
+    for tagged_list in nltk_nlp.tag_sents(doc_en):
+        pprint(tagged_list)
+
+
+def test_stanford_nltk_tag_en():
+    from nlp_util.stanford_nltk_nlp import StanfordNLP
+
+    stanford_nlp = StanfordNLP('en')
+    tagged_list = stanford_nlp.tag(sent_en)
+    pprint(tagged_list)
+
+
+def test_stanford_nltk_tag_zh():
+    from nlp_util.stanford_nltk_nlp import StanfordNLP
+
+    stanford_nlp = StanfordNLP('zh')
+    tagged_list = stanford_nlp.tag(sent_zh)
+    print_result(tagged_list)
+
+
+def test_stanford_corenlp_tag_en():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    with StanfordNLP('en') as stanford_nlp:
+        for tagged_list in stanford_nlp.tag_sents(doc_en):
+            pprint(tagged_list)
+
+
+def test_stanford_corenlp_parse_en():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    from nltk.tree import Tree
+    with StanfordNLP('en') as stanford_nlp:
+        for parsed_sent in stanford_nlp.parse_sents(doc_en):
+            tagged_list = parsed_sent.tagged_list
+            dep_list = parsed_sent.dep_list
+            dep_tree = parsed_sent.get_dep_tree()
+            pprint(tagged_list)
+            pprint(dep_list)
+            pprint(dep_tree)
+            Tree.fromstring(dep_tree).draw()
+
+
+def test_stanford_corenlp_tag_zh():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    with StanfordNLP('zh') as stanford_nlp:
+        for tagged_list in stanford_nlp.tag_sents(doc_zh):
+            print_result(tagged_list)
+
+
+def test_stanford_corenlp_parse_zh():
+    # failed
+    # No head rule defined
+    pass
+
+
+def test_spacy_nlp_tag_en():
+    from nlp_util.spacy_nlp import SpaCyNLP
+    nlp = SpaCyNLP()
+    for tagged_list in nlp.tag(sent_en):
+        pprint(tagged_list)
+
+
+def test_spacy_nlp_parse_en():
+    from nlp_util.spacy_nlp import SpaCyNLP
+    from nltk.tree import Tree
+    nlp = SpaCyNLP()
+    for parsed_sent in nlp.parse_sents(doc_en):
+        tagged_list = parsed_sent.tagged_list
+        dep_list = parsed_sent.dep_list
+        dep_tree = parsed_sent.get_dep_tree()
+        pprint(tagged_list)
+        pprint(dep_list)
+        pprint(dep_tree)
+        Tree.fromstring(dep_tree).draw()
+        try:
+            dep_tree = parsed_sent.get_dep_tree(6)
+            Tree.fromstring(dep_tree).draw()
+            dep_tree = parsed_sent.get_dep_tree(24)
+            Tree.fromstring(dep_tree).draw()
+        except ValueError as e:
+            print(e.message)
+
+
+def test_antwerp_nlp_tag_en():
+    from nlp_util import antwerp_nlp
+    for tagged_list in antwerp_nlp.tag_sents(doc_en):
+        pprint(tagged_list)
+
+
+def test_antwerp_nlp_parse_en():
+    from nlp_util import antwerp_nlp
+    for parsed_sent in antwerp_nlp.parse_sents(doc_en):
+        tagged_list = parsed_sent.tagged_list
+        rdf_triples = parsed_sent.get_rdf_triples()
+        pprint(tagged_list)
+        pprint(rdf_triples)
+
+
+def print_result(tagged_list):
+    if tagged_list:
+        if hasattr(tagged_list[0], '__iter__'):
+            tagged_str = ' '.join(['_'.join(token) for token in tagged_list])
+        else:
+            tagged_str = ' '.join(tagged_list)
+        print(tagged_str)
+
+
+if __name__ == '__main__':
+    # import nlp_util.xxx
+
+    # noinspection PyCompatibility
+    # reload(nlp_util.xxx)
+    # test()
+    pass
