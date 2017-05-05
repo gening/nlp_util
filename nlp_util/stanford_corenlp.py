@@ -23,7 +23,7 @@ from pycorenlp import StanfordCoreNLP
 def _tagged_tuple(token):
     # [word, pos, ner, speaker, lemma]
     token_tuple = []
-    for key in ['word', 'pos', 'ner', 'speaker', 'lemma']:
+    for key in ['word', 'pos', 'ner', 'lemma']:
         if key in token:
             token_tuple.append(token[key])
     return token_tuple
@@ -55,12 +55,27 @@ class StanfordNLP(object):
                                'stanford_corenlp_server_stop.sh'))
 
     def kernel(self, doc, parsing=True):
-        # conf params
-        # tokenize, ssplit, pos, lemma, ner,
-        # depparse, parse, sentiment, natlog, mention, entitymentions, coref, dcoref,
-        # openie
+        # The annotators enabled by default are:
+        # -annotators tokenize, ssplit, pos, lemma, ner, depparse, coref, natlog, openie.
+        # The default annotators do not include the parse annotator.
+        # This is primarily for efficiency.
+        #
+        # Annotatos:
+        # https://stanfordnlp.github.io/CoreNLP/dependencies.html
+        # tokenize, ssplit, pos, lemma, ner, # ssplit = sent split
+        # depparse, parse, dcoref, coref, mention, entitymentions,
+        # sentiment, natlog, openie
+
         if parsing:
-            conf = 'tokenize, ssplit, pos, lemma, ner, parse, dcoref'  # ssplit = sent split
+            # Must deparse to load model from edu/stanford/nlp/models/parser/nndep/ for Chinese
+            # otherwise dependency parsing Chinese sentences will raise a "no head rule" error.
+            conf = 'tokenize, ssplit, pos, lemma, ner, depparse'
+            # Note:
+            # `coref` must be used with `parse` together for Chinese
+            # `dcoref` here does not work for Chinese
+            # e.g.
+            # conf = ('tokenize, ssplit, pos, lemma, ner, depparse, '
+            #         'parse, coref')  # cause timeout
         else:
             conf = 'tokenize, ssplit, pos, lemma, ner'
 
@@ -72,11 +87,12 @@ class StanfordNLP(object):
 
         # # corenlp_doc
         # print(corenlp_doc['sentences'][0].keys())
-        # [u'tokens', u'index', u'parse',
-        #  u'basicDependencies', u'enhancedDependencies', u'enhancedPlusPlusDependencies']
+        # [u'index', u'tokens',
+        #  u'basicDependencies', u'enhancedDependencies', u'enhancedPlusPlusDependencies',
+        #  u'parse']
         return corenlp_doc
 
-    def tag_sents(self, doc):
+    def tag_iter(self, doc):
         # tokens
         # print corenlp_doc['sentences'][0]['tokens'][0].keys()
         # [u'index', u'word', u'lemma', u'originalText', u'pos', u'before', u'after',
@@ -86,7 +102,7 @@ class StanfordNLP(object):
             tagged_list = [_tagged_tuple(t) for t in parsed_sent['tokens']]
             yield tagged_list
 
-    def parse_sents(self, doc):
+    def parse_iter(self, doc):
         corenlp_doc = self.kernel(doc, parsing=True)
         if isinstance(corenlp_doc, dict):
             for corenlp_sent in corenlp_doc['sentences']:
@@ -113,7 +129,7 @@ class ParsedSent(object):
         # dependency arcs
         # basicDependencies, enhancedDependencies, enhancedPlusPlusDependencies
         self._dep_list = None
-        self._dependencies = corenlp_sent['enhancedDependencies']
+        self._dependencies = corenlp_sent['enhancedPlusPlusDependencies']
 
         # dependency graph
         # root: of the first tree

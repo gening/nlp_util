@@ -32,7 +32,7 @@ def kernel(text, parsing=True):
     return tagged_str
 
 
-def tag_sents(doc):
+def tag_iter(doc):
     """
     
     :param doc: 
@@ -47,7 +47,7 @@ def tag_sents(doc):
         yield tagged_list
 
 
-def parse_sents(doc):
+def parse_iter(doc):
     tagged_str = kernel(doc, parsing=True)
     antwerp_sent_list = pattern.en.tree(tagged_str)
 

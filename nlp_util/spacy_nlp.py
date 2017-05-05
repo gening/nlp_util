@@ -39,7 +39,7 @@ class SpaCyNLP(object):
         tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_doc]
         return tagged_list
 
-    def parse_sents(self, doc):
+    def parse_iter(self, doc):
         spacy_doc = self.kernel(doc)
         for spacy_sent in spacy_doc.sents:
             yield ParsedSent(spacy_sent)

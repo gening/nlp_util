@@ -7,9 +7,7 @@ Unified Interface of parts-of-speech tagging and dependency parsing.
 Input: string
 Output: [(word, pos, ...), (word, pos, ...), ...]
 """
-# todo: test
-# todo: dependencies parse of stanford nltk and corenlp of zh use neural dependency parser
-# fixme: jieba.disable_parallel()
+# todo: neural dependencies parse of stanford nltk
 # todo: syntaxnet
 # TextBlob
 # use NLTK and pattern.en library.
@@ -53,11 +51,20 @@ def test_jieba_nlp_zh():
     tagged_list = jieba_nlp.tag(sent_zh)
     print_result(tagged_list)
 
+def test_jieba_nlp_parallel_zh():
+    from nlp_util import jieba_nlp
+    from time import sleep
+
+    with jieba_nlp.parallel_tag() as tag:
+        for i in range(60):
+            print_result(tag(sent_zh))
+            sleep(1)
+
 
 def test_nltk_nlp_en():
     from nlp_util import nltk_nlp
 
-    for tagged_list in nltk_nlp.tag_sents(doc_en):
+    for tagged_list in nltk_nlp.tag_iter(doc_en):
         pprint(tagged_list)
 
 
@@ -80,7 +87,7 @@ def test_stanford_nltk_tag_zh():
 def test_stanford_corenlp_tag_en():
     from nlp_util.stanford_corenlp import StanfordNLP
     with StanfordNLP('en') as stanford_nlp:
-        for tagged_list in stanford_nlp.tag_sents(doc_en):
+        for tagged_list in stanford_nlp.tag_iter(doc_en):
             pprint(tagged_list)
 
 
@@ -88,7 +95,7 @@ def test_stanford_corenlp_parse_en():
     from nlp_util.stanford_corenlp import StanfordNLP
     from nltk.tree import Tree
     with StanfordNLP('en') as stanford_nlp:
-        for parsed_sent in stanford_nlp.parse_sents(doc_en):
+        for parsed_sent in stanford_nlp.parse_iter(doc_en):
             tagged_list = parsed_sent.tagged_list
             dep_list = parsed_sent.dep_list
             dep_tree = parsed_sent.get_dep_tree()
@@ -101,11 +108,23 @@ def test_stanford_corenlp_parse_en():
 def test_stanford_corenlp_tag_zh():
     from nlp_util.stanford_corenlp import StanfordNLP
     with StanfordNLP('zh') as stanford_nlp:
-        for tagged_list in stanford_nlp.tag_sents(doc_zh):
+        for tagged_list in stanford_nlp.tag_iter(doc_zh):
             print_result(tagged_list)
 
 
 def test_stanford_corenlp_parse_zh():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    from nltk.tree import Tree
+    with StanfordNLP('zh') as stanford_nlp:
+        for parsed_sent in stanford_nlp.parse_iter(doc_zh):
+            tagged_list = parsed_sent.tagged_list
+            dep_list = parsed_sent.dep_list
+            dep_tree = parsed_sent.get_dep_tree()
+            # pprint(parsed_sent.corenlp_sent)
+            print_result(tagged_list)
+            pprint(dep_list)
+            print(dep_tree.encode('utf-8'))
+            Tree.fromstring(dep_tree).draw()
     # failed
     # No head rule defined
     pass
@@ -122,7 +141,7 @@ def test_spacy_nlp_parse_en():
     from nlp_util.spacy_nlp import SpaCyNLP
     from nltk.tree import Tree
     nlp = SpaCyNLP()
-    for parsed_sent in nlp.parse_sents(doc_en):
+    for parsed_sent in nlp.parse_iter(doc_en):
         tagged_list = parsed_sent.tagged_list
         dep_list = parsed_sent.dep_list
         dep_tree = parsed_sent.get_dep_tree()
@@ -141,13 +160,13 @@ def test_spacy_nlp_parse_en():
 
 def test_antwerp_nlp_tag_en():
     from nlp_util import antwerp_nlp
-    for tagged_list in antwerp_nlp.tag_sents(doc_en):
+    for tagged_list in antwerp_nlp.tag_iter(doc_en):
         pprint(tagged_list)
 
 
 def test_antwerp_nlp_parse_en():
     from nlp_util import antwerp_nlp
-    for parsed_sent in antwerp_nlp.parse_sents(doc_en):
+    for parsed_sent in antwerp_nlp.parse_iter(doc_en):
         tagged_list = parsed_sent.tagged_list
         rdf_triples = parsed_sent.get_rdf_triples()
         pprint(tagged_list)
@@ -169,4 +188,5 @@ if __name__ == '__main__':
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # test()
+    test_jieba_nlp_parallel_zh()
     pass
