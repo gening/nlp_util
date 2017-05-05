@@ -112,131 +112,70 @@ class StanfordNLP(object):
             sys.stderr.write(corenlp_doc)
 
 
-class ParsedSent(object):
+from interface import SentDependencyI
+
+
+class ParsedSent(SentDependencyI):
     # parse
-    # print(self.corenlp_doc['sentences'][0]['parse'])
+    # print(corenlp_doc['sentences'][0]['parse'])
     # from nltk.tree import Tree
     #
-    # sent_tree = Tree.fromstring(self.corenlp_doc['sentences'][0]['kernel'])
+    # sent_tree = Tree.fromstring(corenlp_doc['sentences'][0]['kernel'])
     # sent_tree.draw()
     def __init__(self, corenlp_sent):
         self.corenlp_sent = corenlp_sent
+        # tokens
+        self.tagged_list = self._set_tagged_list()
+        # dependency graph
+        node_num = len(self.tagged_list)
+        self.dep_graph, self.root_index = self._set_dep_graph(node_num)
+        super(self.__class__, self).__init__(self.dep_graph, self.root_index,
+                                             make_leaf=self._leaf_func)
 
+    def _set_tagged_list(self):
         # dependency vertices
         # tokens
-        self.tagged_list = [_tagged_tuple(t) for t in corenlp_sent['tokens']]
-        self._sent_length = len(self.tagged_list)
+        tagged_list = [_tagged_tuple(t) for t in self.corenlp_sent['tokens']]
+        return tagged_list
+
+    def _set_dep_graph(self, node_num):
         # dependency arcs
         # basicDependencies, enhancedDependencies, enhancedPlusPlusDependencies
-        self._dep_list = None
-        self._dependencies = corenlp_sent['enhancedPlusPlusDependencies']
+        corenlp_dep = self.corenlp_sent['enhancedPlusPlusDependencies']
 
         # dependency graph
         # root: of the first tree
-        self._root_index = -1
+        root_id = None
         # arcs: from tail to head
-        self._arcs_child_heads = [list() for _ in range(self._sent_length)]
+        dep_graph = [dict() for _ in range(node_num)]
         # arcs: from head to tail
-        self._graph_head_children = dict()
-        for d in self._dependencies:
-            dependent_i = d['dependent'] - 1
-            dep_name = d['dep']
-            governor_i = d['governor'] - 1
-            if governor_i > 0:
-                arc_length = abs(dependent_i - governor_i)
-            else:  # governor_i = -1
-                arc_length = 0
-                if self._root_index == -1:
-                    self._root_index = dependent_i
+        for d in corenlp_dep:
+            dep_id = d['dependent'] - 1
+            dep_rel = d['dep']
+            head_id = d['governor'] - 1
+
+            # option `enhancedPlusPlusDependencies` may cause one mapped to two heads.
+            # these relations are stored in the dep_graph[head_id]['deps']
+            # dep_graph[dep_id]['head'] is only the nearest head_id.
+            if ('head' not in dep_graph[dep_id] or (
+                            dep_graph[dep_id]['head'] != -1 and (
+                                abs(head_id - dep_id) < abs(dep_graph[dep_id]['head'] - dep_id)))):
+                dep_graph[dep_id]['rel'] = dep_rel
+                dep_graph[dep_id]['head'] = head_id
+
+            if head_id == -1:  # head_id = -1
+                if root_id is None:
+                    root_id = dep_id
                 else:
-                    self._root_index = min(dependent_i, self._root_index)
-            self._arcs_child_heads[dependent_i].append((arc_length, dep_name, governor_i))
-            self._graph_head_children.setdefault(governor_i, list()).append((dependent_i, dep_name))
-        for head in self._graph_head_children:
-            self._graph_head_children[head].sort()
+                    root_id = min(dep_id, root_id)
+            else:
+                dep_graph[head_id].setdefault(
+                    'deps', dict()).setdefault(
+                    dep_rel, list()).append(dep_id)
 
-        # tree formatter
-        self._tree_func = _format_tree
+        return dep_graph, root_id
+
+    def _leaf_func(self, index):
+        token = self.tagged_list[index]
         # noinspection PyCompatibility
-        self._leaf_func = lambda token: '/'.join([token[0].replace('(', u'（').replace('(', u'）'),
-                                                  token[1].replace('(', u'（').replace('(', u'）')])
-
-    @property
-    def dep_list(self):
-        if self._dep_list is None:
-            self._dep_list = []
-            for dependent_i, arc_list in enumerate(self._arcs_child_heads):
-                arc_shortest = sorted(arc_list)[0] if len(arc_list) > 1 else arc_list[0]
-                dep_name = arc_shortest[1]
-                governor_i = arc_shortest[2]
-                self._dep_list.append((dep_name,  # dep name
-                                       governor_i if governor_i > 0 else dependent_i,  # head
-                                       self.left_edge(governor_i),  # start = left_edge
-                                       self.right_edge(governor_i) + 1  # end = right_edge
-                                       ))
-        return self._dep_list
-
-    def left_edge(self, index):
-        left = index
-        while True:
-            children = self._graph_head_children.get(left, None)
-            if children and (children[0][0] < left or left < 0):
-                left = children[0][0]
-            else:
-                break
-        if left < 0:
-            raise ValueError('index out of range')
-        return left
-
-    def right_edge(self, index):
-        right = index
-        while True:
-            children = self._graph_head_children.get(right, None)
-            if children and right < children[-1][0]:
-                right = children[-1][0]
-            else:
-                break
-        if right > self._sent_length:
-            raise ValueError('index out of range')
-        return right
-
-    def get_dep_tree(self, index=-1):
-        if index < -1 or index >= self._sent_length:
-            raise ValueError('index out of range')
-        elif index == -1:
-            if self._root_index == -1:
-                return None
-            else:
-                index = self._root_index
-        graph_vertex_status = ['O'] * self._sent_length
-        return self._spanning_tree(graph_vertex_status, index)
-        # from nltk.tree import Tree
-        # Tree.fromstring(get_dep_tree()).draw()
-
-    def _spanning_tree(self, visiting_array, node_index, node_name='ROOT'):
-        visiting_array[node_index] = 'V'
-        root = node_name  # dep_name
-        subtrees = []
-        leaf = self._leaf_func(self.tagged_list[node_index])
-        if node_index not in self._graph_head_children:
-            subtrees.append(leaf)
-        else:
-            subtrees.append(self._tree_func('^', [leaf]))
-            this_pos = 0
-            for child_i, child_name in self._graph_head_children[node_index]:
-                if visiting_array[child_i] == 'V':
-                    # has already visited
-                    continue
-                subtree = self._spanning_tree(visiting_array, child_i, child_name)
-                if child_i < node_index:
-                    subtrees.insert(this_pos, subtree)
-                    this_pos += 1
-                elif child_i > node_index:
-                    subtrees.append(subtree)
-        return self._tree_func(root, subtrees)
-
-
-def _format_tree(root, subtree_list):
-    return '(' + root + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
-    # from nltk.tree import Tree
-    # return Tree(root, subtree_list)
+        return '/'.join([token[0], token[1]]).replace('(', u'（').replace('(', u'）')

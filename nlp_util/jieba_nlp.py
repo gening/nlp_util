@@ -27,15 +27,17 @@ def tag(text):
 
 
 from contextlib import contextmanager
-from jieba import enable_parallel
-from jieba import disable_parallel
 
 
 @contextmanager
-def parallel_tag():
+def enable_parallel(processnum=4):
+    from jieba import enable_parallel
+    from jieba import disable_parallel
+    # __enter__
     print('enable jieba parallel')
-    enable_parallel(4)
-    yield tag
+    enable_parallel(processnum)
+    # yield only one object
+    yield
+    # __exit__
     disable_parallel()
     print('disable jieba parallel')
-

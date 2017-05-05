@@ -57,6 +57,7 @@ def parse_iter(doc):
 
 class ParsedSent(object):
     def __init__(self, antwerp_sent):
+        self.antwerp_sent = antwerp_sent
         # [(word, pos, chunk, pnp-chunk, chunk-rol-relation, lemma), ...]
         tagged_list = [[w.string, w.type,
                         ('B-' if w.index == w.chunk.start else 'I-') + w.chunk.type
@@ -68,7 +69,6 @@ class ParsedSent(object):
                         if w.chunk and w.chunk.relation else 'O',
                         w.lemma]
                        for w in antwerp_sent.words]
-        self.antwerp_sent = antwerp_sent
         self.tagged_list = tagged_list
 
     def get_rdf_triples(self):

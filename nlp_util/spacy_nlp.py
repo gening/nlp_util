@@ -53,10 +53,14 @@ class ParsedSent(object):
         self.dep_list = [(t.dep_,  # dep name
                           t.head.i - self._offset,  # head
                           t.left_edge.i - self._offset,  # start = left_edge
-                          t.right_edge.i - self._offset + 1  # end = right_edge + 1
+                          t.right_edge.i - self._offset  # end = right_edge + 1
                           ) for t in spacy_sent]
         self._tree_func = _format_tree
         self._leaf_func = lambda token: '/'.join([token.orth_, token.tag_])
+
+    @property
+    def dep_graph(self):
+        raise NotImplementedError('ParsedSent.')
 
     def left_edge(self, index):
         space_token = self.spacy_sent[index]
@@ -66,10 +70,10 @@ class ParsedSent(object):
         space_token = self.spacy_sent[index]
         return space_token.right_edge.i - self._offset
 
-    def get_dep_tree(self, index=-1):
-        if index < -1 or index >= self.spacy_sent.end - self.spacy_sent.start:
+    def get_dep_tree(self, index=None):
+        if index < 0 or index >= self.spacy_sent.end - self.spacy_sent.start:
             raise ValueError('index out of range')
-        elif index == -1:
+        if index is None:
             # If there's a forest, the earliest is preferred
             spacy_token = self.spacy_sent.root
         else:
@@ -111,7 +115,6 @@ class ParsedSent(object):
         else:
             subtrees.insert(this_pos, leaf)
         return self._tree_func(root, subtrees)
-
 
 def _format_tree(root, subtree_list):
     return '(' + root + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
