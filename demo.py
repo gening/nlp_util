@@ -10,6 +10,7 @@ Parse output members: tagged_list, dep_list, dep_graph, root_index
 Parse output functions: get_dep_tree, left_edge, right_edge
 """
 # todo: spacy dep_graph index
+# todo: rename _iter to _ssplit?
 # todo: syntaxnet
 # TextBlob
 # use NLTK and pattern.en library.
@@ -126,6 +127,7 @@ def demo_stanford_corenlp_tag_en():
         for tagged_list in stanford_nlp.tag_iter(doc_en):
             pprint(tagged_list)
 
+
 def demo_stanford_corenlp_parse_en():
     from nlp_util.stanford_corenlp import StanfordNLP
     from nltk.tree import Tree
@@ -139,7 +141,8 @@ def demo_stanford_corenlp_parse_en():
             pprint(dep_tree)
             Tree.fromstring(dep_tree).draw()
 
-def demo_stanford_corenlp_parse_en_all():
+
+def demo_stanford_corenlp_parse_en_without_punt():
     from nlp_util.stanford_corenlp import StanfordNLP
     from nltk.tree import Tree
     with StanfordNLP('en') as stanford_nlp:
@@ -233,4 +236,5 @@ if __name__ == '__main__':
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
+    demo_stanford_corenlp_parse_en()
     pass

@@ -46,6 +46,7 @@ class SpaCyNLP(object):
 
 
 class ParsedSent(object):
+    # fixme: check index
     def __init__(self, spacy_sent):
         self.spacy_sent = spacy_sent
         self._offset = spacy_sent.start
@@ -55,22 +56,28 @@ class ParsedSent(object):
                           t.left_edge.i - self._offset,  # start = left_edge
                           t.right_edge.i - self._offset  # end = right_edge + 1
                           ) for t in spacy_sent]
+        self.root_index = self.spacy_sent.root.i
         self._tree_func = _format_tree
+        # fixme: change token param to index
         self._leaf_func = lambda token: '/'.join([token.orth_, token.tag_])
 
     @property
     def dep_graph(self):
+        # todo
         raise NotImplementedError('ParsedSent.')
 
     def left_edge(self, index):
+        # fixme: index
         space_token = self.spacy_sent[index]
         return space_token.left_edge.i - self._offset
 
     def right_edge(self, index):
+        # fixme: index
         space_token = self.spacy_sent[index]
         return space_token.right_edge.i - self._offset
 
     def get_dep_tree(self, index=None):
+        # fixme: index
         if index < 0 or index >= self.spacy_sent.end - self.spacy_sent.start:
             raise ValueError('index out of range')
         if index is None:
@@ -115,6 +122,7 @@ class ParsedSent(object):
         else:
             subtrees.insert(this_pos, leaf)
         return self._tree_func(root, subtrees)
+
 
 def _format_tree(root, subtree_list):
     return '(' + root + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
