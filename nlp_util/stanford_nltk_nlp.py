@@ -186,7 +186,7 @@ class StanfordNLP(object):
             # only return the first dependency graph in the result.
             return ParsedSent(nltk_dep_graph, word_pos_ner_list)
 
-    def parse_iter(self, doc):
+    def parse_with_ssplit(self, doc):
         # support sent split
         if self._lang in ['zh']:
             raise NotImplementedError('Because tagged_parse() is not supported by '

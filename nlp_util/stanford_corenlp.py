@@ -92,7 +92,7 @@ class StanfordNLP(object):
         #  u'parse']
         return corenlp_doc
 
-    def tag_iter(self, doc):
+    def tag_with_ssplit(self, doc):
         # tokens
         # print corenlp_doc['sentences'][0]['tokens'][0].keys()
         # [u'index', u'word', u'lemma', u'originalText', u'pos', u'before', u'after',
@@ -102,7 +102,7 @@ class StanfordNLP(object):
             tagged_list = [_tagged_tuple(t) for t in parsed_sent['tokens']]
             yield tagged_list
 
-    def parse_iter(self, doc):
+    def parse_with_ssplit(self, doc):
         corenlp_doc = self.kernel(doc, parsing=True)
         if isinstance(corenlp_doc, dict):
             for corenlp_sent in corenlp_doc['sentences']:

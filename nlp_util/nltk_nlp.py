@@ -19,7 +19,7 @@ from nltk import sent_tokenize
 from nltk import word_tokenize
 
 
-def tag_iter(doc):
+def tag_with_ssplit(doc):
     """
     
     :param doc: 

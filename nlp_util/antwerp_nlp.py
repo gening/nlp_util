@@ -32,7 +32,7 @@ def kernel(text, parsing=True):
     return tagged_str
 
 
-def tag_iter(doc):
+def tag_with_ssplit(doc):
     """
     
     :param doc: 
@@ -47,7 +47,7 @@ def tag_iter(doc):
         yield tagged_list
 
 
-def parse_iter(doc):
+def parse_with_ssplit(doc):
     tagged_str = kernel(doc, parsing=True)
     antwerp_sent_list = pattern.en.tree(tagged_str)
 
