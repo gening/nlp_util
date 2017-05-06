@@ -155,6 +155,8 @@ class StanfordNLP(object):
             self.stanford_dep_parser = get_dep_parser(self._lang)
 
     def set_up_nndep_parser(self):
+        if self.stanford_ner_tag is None:
+            self.stanford_ner_tag = get_ner_tag(self._lang)
         if self.stanford_nndep_parser is None:
             self.stanford_nndep_parser = get_nndep_parser(self._lang)
 
@@ -196,7 +198,16 @@ class StanfordNLP(object):
         # but does not support Chinese segment.
         nltk_dep_graph_list = self.stanford_nndep_parser.raw_parse(doc.replace('\n', ''))
         for nltk_dep_graph in nltk_dep_graph_list:
-            yield ParsedSent(nltk_dep_graph)
+            parsed_sent = ParsedSent(nltk_dep_graph)
+            # tag ner after parsing
+            tagged_list = parsed_sent.tagged_list
+            word_list = zip(*tagged_list)[1]
+            word_ner_list = self.stanford_ner_tag(word_list)
+            tagged_list = []
+            parsed_sent.tagged_list = [list(token).insert(2, word_ner_list[i][1])
+                                       for i, token in enumerate(tagged_list)]
+            # ner tagged
+            yield parsed_sent
 
 
 from interface import SentDependencyI
