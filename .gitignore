@@ -91,6 +91,9 @@ ENV/
 # Pycharm project
 .idea
 
+# NLP resources
+data/
+
 # macOS
 *~
 .DS_Store

@@ -366,6 +366,78 @@ dep_graph_nodes = {
     25: {u'ctag': u'.', u'head': 9, u'deps': {}, u'tag': u'.', u'address': 25, u'word': u'.',
          u'lemma': u'.', u'rel': u'punct', u'feats': u''}}
 
+dragnn_sent_text = """text: "John is eating pizza with a fork"
+token {
+  word: "John"
+  start: 0
+  end: 3
+  head: 2
+  tag: "attribute { name: \"Number\" value: \"Sing\" } attribute { name: \"fPOS\" value: \"PROPN++NNP\" } "
+  category: ""
+  label: "nsubj"
+  break_level: NO_BREAK
+}
+token {
+  word: "is"
+  start: 5
+  end: 6
+  head: 2
+  tag: "attribute { name: \"Mood\" value: \"Ind\" } attribute { name: \"Number\" value: \"Sing\" } attribute { name: \"Person\" value: \"3\" } attribute { name: \"Tense\" value: \"Pres\" } attribute { name: \"VerbForm\" value: \"Fin\" } attribute { name: \"fPOS\" value: \"AUX++VBZ\" } "
+  category: ""
+  label: "aux"
+  break_level: SPACE_BREAK
+}
+token {
+  word: "eating"
+  start: 8
+  end: 13
+  tag: "attribute { name: \"Tense\" value: \"Pres\" } attribute { name: \"VerbForm\" value: \"Part\" } attribute { name: \"fPOS\" value: \"VERB++VBG\" } "
+  category: ""
+  label: "root"
+  break_level: SPACE_BREAK
+}
+token {
+  word: "pizza"
+  start: 15
+  end: 19
+  head: 2
+  tag: "attribute { name: \"Number\" value: \"Sing\" } attribute { name: \"fPOS\" value: \"NOUN++NN\" } "
+  category: ""
+  label: "obj"
+  break_level: SPACE_BREAK
+}
+token {
+  word: "with"
+  start: 21
+  end: 24
+  head: 6
+  tag: "attribute { name: \"fPOS\" value: \"ADP++IN\" } "
+  category: ""
+  label: "case"
+  break_level: SPACE_BREAK
+}
+token {
+  word: "a"
+  start: 26
+  end: 26
+  head: 6
+  tag: "attribute { name: \"Definite\" value: \"Ind\" } attribute { name: \"PronType\" value: \"Art\" } attribute { name: \"fPOS\" value: \"DET++DT\" } "
+  category: ""
+  label: "det"
+  break_level: SPACE_BREAK
+}
+token {
+  word: "fork"
+  start: 28
+  end: 31
+  head: 2
+  tag: "attribute { name: \"Number\" value: \"Sing\" } attribute { name: \"fPOS\" value: \"NOUN++NN\" } "
+  category: ""
+  label: "obl"
+  break_level: SPACE_BREAK
+}
+"""
+
 
 def test_stanford_nltk_parse():
     from nlp_util.stanford_nltk_nlp import ParsedSent
