@@ -26,7 +26,7 @@ class SpaCyNLP(object):
     def __init__(self, lang='en'):
         self._spacy_nlp = spacy.load(conf[lang])
 
-    def kernel(self, doc, parsing=True):
+    def annotate(self, doc, parsing=True):
         if parsing:
             spacy_doc = self._spacy_nlp(doc)
         else:
@@ -35,12 +35,12 @@ class SpaCyNLP(object):
 
     def tag(self, text):
         # sentence boundary detection requires the dependency parse
-        spacy_doc = self.kernel(text, parsing=False)
+        spacy_doc = self.annotate(text, parsing=False)
         tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_doc]
         return tagged_list
 
     def parse_with_ssplit(self, doc):
-        spacy_doc = self.kernel(doc)
+        spacy_doc = self.annotate(doc)
         for spacy_sent in spacy_doc.sents:
             yield ParsedSent(spacy_sent)
 
@@ -143,10 +143,10 @@ class ParsedSent(object):
         return '/'.join([token.orth_, token.tag_])
 
 
-def _format_tree(root, subtree_list):
-    return '(' + root + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
+def _format_tree(root_label, subtree_list):
+    return '(' + root_label + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
     # from nltk.tree import Tree
-    # return Tree(root, subtree_list)
+    # return Tree(root_label, subtree_list)
 
 
 """

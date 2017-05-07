@@ -54,7 +54,7 @@ class StanfordNLP(object):
         os.system(os.path.join(os.path.dirname(__file__),
                                'stanford_corenlp_server_stop.sh'))
 
-    def kernel(self, doc, parsing=True):
+    def annotate(self, doc, parsing=True):
         # The annotators enabled by default are:
         # -annotators tokenize, ssplit, pos, lemma, ner, depparse, coref, natlog, openie.
         # The default annotators do not include the parse annotator.
@@ -97,13 +97,13 @@ class StanfordNLP(object):
         # print corenlp_doc['sentences'][0]['tokens'][0].keys()
         # [u'index', u'word', u'lemma', u'originalText', u'pos', u'before', u'after',
         #  u'characterOffsetEnd', u'characterOffsetBegin', u'ner', u'speaker']
-        corenlp_doc = self.kernel(doc, parsing=False)
+        corenlp_doc = self.annotate(doc, parsing=False)
         for parsed_sent in corenlp_doc['sentences']:
             tagged_list = [_tagged_tuple(t) for t in parsed_sent['tokens']]
             yield tagged_list
 
     def parse_with_ssplit(self, doc):
-        corenlp_doc = self.kernel(doc, parsing=True)
+        corenlp_doc = self.annotate(doc, parsing=True)
         if isinstance(corenlp_doc, dict):
             for corenlp_sent in corenlp_doc['sentences']:
                 yield ParsedSent(corenlp_sent)
@@ -120,7 +120,7 @@ class ParsedSent(SentDependencyI):
     # print(corenlp_doc['sentences'][0]['parse'])
     # from nltk.tree import Tree
     #
-    # sent_tree = Tree.fromstring(corenlp_doc['sentences'][0]['kernel'])
+    # sent_tree = Tree.fromstring(corenlp_doc['sentences'][0]['parse'])
     # sent_tree.draw()
     def __init__(self, corenlp_sent):
         self.corenlp_sent = corenlp_sent

@@ -313,7 +313,7 @@ class ParsedSent(SentDependencyI):
 # stanford_ner = StanfordNERTagger(model_name_ner)
 # word_ner_list = stanford_ner.tag(word_list)
 #
-# from nltk.kernel.stanford import StanfordDependencyParser
+# from nltk.parse.stanford import StanfordDependencyParser
 #
 # stanford_parser = StanfordDependencyParser()
-# print [list(kernel.triples()) for kernel in stanford_parser.raw_parse(text)]
+# print [list(parse.triples()) for parse in stanford_parser.raw_parse(text)]

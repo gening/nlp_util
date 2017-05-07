@@ -19,7 +19,7 @@ __version__ = "1.0"
 import pattern.en
 
 
-def kernel(text, parsing=True):
+def annotate(text, parsing=True):
     tagged_str = pattern.en.parse(text,
                                   tokenize=True,  # Split punctuation marks from words?
                                   tags=True,  # Parse part-of-speech tags? (NN, JJ, ...)
@@ -38,7 +38,7 @@ def tag_with_ssplit(doc):
     :param doc: 
     :return: yield [(word, pos, chunk, pnp-chunk, lemma), ...] of a sentence
     """
-    tagged_str = kernel(doc, parsing=False)
+    tagged_str = annotate(doc, parsing=False)
     tagged_sents = tagged_str.split()
     # With chunks=True
     # each word is annotated with a chunk tag and a PNP tag (prepositional noun phrase, PP + NP).
@@ -48,7 +48,7 @@ def tag_with_ssplit(doc):
 
 
 def parse_with_ssplit(doc):
-    tagged_str = kernel(doc, parsing=True)
+    tagged_str = annotate(doc, parsing=True)
     antwerp_sent_list = pattern.en.tree(tagged_str)
 
     for antwerp_sent in antwerp_sent_list:

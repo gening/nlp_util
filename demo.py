@@ -10,6 +10,8 @@ Parse output members: tagged_list, dep_list, dep_graph, root_index
 Parse output functions: get_dep_tree, left_edge, right_edge
 """
 # todo: syntaxnet
+# todo: auto check python package and print error
+# todo: ask to confirm auto downloading stanford nlp gzip and change conf, default = not download
 # TextBlob
 # use NLTK and pattern.en library.
 

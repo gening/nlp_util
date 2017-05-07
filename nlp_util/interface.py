@@ -103,7 +103,7 @@ class SentDependencyI(object):
 
     def _spanning_tree(self, visiting_array, node_index, node_label):
         visiting_array[node_index] = 'V'
-        root = node_label  # dep_name
+        root_label = node_label  # dep_name
         subtrees = dict()
         leaf = self._leaf_func(node_index)
         if 'deps' not in self._dep_graph[node_index]:
@@ -116,13 +116,13 @@ class SentDependencyI(object):
                         # has already visited
                         continue
                     subtrees[dep_id] = self._spanning_tree(visiting_array, dep_id, dep_rel)
-        return self._tree_func(root, [subtrees[i] for i in sorted(subtrees)])
+        return self._tree_func(root_label, [subtrees[i] for i in sorted(subtrees)])
 
 
 def _format_tree(root_label, subtree_list):
     return '(' + root_label + (' ' + ' '.join(subtree_list) if subtree_list else '') + ')'
     # from nltk.tree import Tree
-    # return Tree(root, subtree_list)
+    # return Tree(root_label, subtree_list)
 
 
 def _format_leaf(index):
