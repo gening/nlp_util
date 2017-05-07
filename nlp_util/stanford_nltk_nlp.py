@@ -14,36 +14,19 @@ __copyright__ = "Copyright (C) 2017 GE Ning"
 __license__ = "LGPL-3.0"
 __version__ = "1.0"
 
-import sys
+from . import conf
 
-import codecs
-from os import path
-
-if sys.version_info[0] == 2:  # python 2
-    # noinspection PyCompatibility,PyUnresolvedReferences
-    from ConfigParser import ConfigParser
-elif sys.version_info[0] == 3:  # python 3
-    # noinspection PyCompatibility,PyUnresolvedReferences
-    from configparser import ConfigParser
-
-conf = ConfigParser()
-
-with codecs.open(path.join(path.dirname(__file__), 'stanford_nltk_nlp.conf'),
-                 'r', encoding='utf-8') as f:
-    conf.readfp(f)
-cfg = conf.get
+cfg = conf('stanford_nlp.conf').get
 
 
 def get_seg(lang):
     if lang in ['zh', 'ar']:
         from nltk.tokenize.stanford_segmenter import StanfordSegmenter
-        path_to_jar = path.join(cfg('seg', 'path'), cfg('seg', 'path_jar'))
+        path_to_jar = cfg('seg', 'jar')
         path_to_slf4j = path_to_jar  # slf4j cannot be found any more in v3.7
-        path_to_sihan_corpora_dict = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'))
-        path_to_model = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'),
-                                  cfg(lang, 'seg_model'))
-        path_to_dict = path.join(cfg('seg', 'path'), cfg('seg', 'path_data'),
-                                 cfg(lang, 'seg_dict'))
+        path_to_sihan_corpora_dict = cfg('seg', 'path_data')
+        path_to_model = cfg('seg', 'model_' + lang)
+        path_to_dict = cfg('seg', 'dict_' + lang)
         # path_to_jar = "stanford-segmenter-3.6.0.jar",
         # path_to_slf4j = "slf4j-api.jar",
         # path_to_sihan_corpora_dict = "./data",
@@ -58,7 +41,7 @@ def get_seg(lang):
         stanford_tokenize_func = (lambda text: stanford_segmenter.segment(text).split())
     else:  # if lang in ['en', 'fr', 'es']:
         from nltk.tokenize.stanford import StanfordTokenizer
-        path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
+        path_to_jar = cfg('pos', 'jar')
         # cannot call tokenize_sents() because it support sent_list but not support sent split
         stanford_tokenize_func = StanfordTokenizer(path_to_jar).tokenize
     return stanford_tokenize_func
@@ -66,9 +49,8 @@ def get_seg(lang):
 
 def get_pos_tag(lang):
     from nltk.tag.stanford import StanfordPOSTagger
-    path_to_jar = path.join(cfg('pos', 'path'), cfg('pos', 'path_jar'))
-    model_filename = path.join(cfg('pos', 'path'), cfg('pos', 'path_model'),
-                               cfg(lang, 'pos_model'))
+    path_to_jar = cfg('pos', 'jar')
+    model_filename = cfg('pos', 'model_' + lang)
     stanford_postagger = StanfordPOSTagger(model_filename, path_to_jar)
     if lang in ['zh']:
         # [('', u'中文#NN'), ...]
@@ -81,9 +63,8 @@ def get_pos_tag(lang):
 
 def get_ner_tag(lang):
     from nltk.tag.stanford import StanfordNERTagger
-    path_to_jar = path.join(cfg('ner', 'path'), cfg('ner', 'path_jar'))
-    model_filename = path.join(cfg('ner', 'path'), cfg('ner', 'path_model'),
-                               cfg(lang, 'ner_model'))
+    path_to_jar = cfg('ner', 'jar')
+    model_filename = cfg('ner', 'model_' + lang)
     stanford_ner_func = StanfordNERTagger(model_filename, path_to_jar).tag
     return stanford_ner_func
 
@@ -91,9 +72,9 @@ def get_ner_tag(lang):
 def get_syntactic_parser(lang):
     from nltk.parse.stanford import StanfordParser
 
-    path_to_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_jar'))
-    path_to_models_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_model_jar'))
-    model_path = path.join(cfg('parser', 'model_path'), cfg(lang, 'parser_model'))
+    path_to_jar = cfg('parser', 'jar')
+    path_to_models_jar = cfg('parser', 'model_jar')
+    model_path = cfg('parser', 'model_' + lang)
     stanford_parser = StanfordParser(path_to_jar, path_to_models_jar, model_path)
     # print(list(stanford_dep_parser.raw_parse(text)))
     # for sent_tree in stanford_dep_parser.raw_parse(text):
@@ -104,9 +85,9 @@ def get_syntactic_parser(lang):
 def get_dep_parser(lang):
     # statical dependency parser
     from nltk.parse.stanford import StanfordDependencyParser
-    path_to_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_jar'))
-    path_to_models_jar = path.join(cfg('parser', 'path'), cfg('parser', 'path_model_jar'))
-    model_path = path.join(cfg('parser', 'model_path'), cfg(lang, 'parser_model'))
+    path_to_jar = cfg('parser', 'jar')
+    path_to_models_jar = cfg('parser', 'model_jar')
+    model_path = cfg('parser', 'model_' + lang)
     stanford_dep_parser = StanfordDependencyParser(path_to_jar, path_to_models_jar, model_path)
     return stanford_dep_parser
 
@@ -114,9 +95,9 @@ def get_dep_parser(lang):
 def get_nndep_parser(lang):
     # neural network dependency parser
     from nltk.parse.stanford import StanfordNeuralDependencyParser
-    path_to_jar = path.join(cfg('corenlp', 'path'), cfg('corenlp', 'path_jar'))
-    path_to_models_jar = path.join(cfg('corenlp_model', 'path'), cfg(lang, 'corenlp_model_jar'))
-    model_path = path.join(cfg('nndep', 'model_path'), cfg(lang, 'nndep_model'))
+    path_to_jar = cfg('corenlp', 'jar')
+    path_to_models_jar = cfg('corenlp_model', 'jar_' + lang)
+    model_path = cfg('nndep', 'model_' + lang)
     stanford_nndep_parser = StanfordNeuralDependencyParser(path_to_jar, path_to_models_jar,
                                                            model_path)
     # set to 2-4GB, otherwise default `-mx1000m` causes java.lang.OutOfMemoryError

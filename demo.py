@@ -9,9 +9,9 @@ Tag output: tagged_list = [(word, pos, ...), (word, pos, ...), ...]
 Parse output members: tagged_list, dep_list, dep_graph, root_index
 Parse output functions: get_dep_tree, left_edge, right_edge
 """
-# todo: syntaxnet
-# todo: auto check python package and print error
-# todo: ask to confirm auto downloading stanford nlp gzip and change conf, default = not download
+# todo: tensorflow_draggn: index, ssplit, zh
+# todo: import python package -- auto check and print error
+# todo: check model data -- ask if auto downloading gzip and change conf; default = not download
 # TextBlob
 # use NLTK and pattern.en library.
 
@@ -204,7 +204,8 @@ def demo_stanford_nltk_parse_zh():
 
     stanford_nlp = StanfordNLP('zh')
     try:
-        for parsed_sent in stanford_nlp.parse(sent_zh):
+        parsed_sent = stanford_nlp.parse(sent_zh)
+        if parsed_sent:
             tagged_list = parsed_sent.tagged_list
             dep_list = parsed_sent.dep_list
             dep_tree = parsed_sent.get_dep_tree()
@@ -253,7 +254,7 @@ def show_demo():
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
-    demo_spacy_nlp_parse_en()
+    demo_stanford_nltk_parse_zh()
 
 
 if __name__ == '__main__':

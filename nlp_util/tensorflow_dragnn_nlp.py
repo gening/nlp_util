@@ -30,8 +30,6 @@ from syntaxnet import sentence_pb2
 from syntaxnet.ops import gen_parser_ops
 from tensorflow.python.platform import tf_logging as logging
 
-data_path = os.path.join(os.path.dirname(__file__), 'data')
-
 
 def load_model(base_dir, master_spec_name, checkpoint_name):
     # Read the master spec
@@ -64,10 +62,18 @@ def load_model(base_dir, master_spec_name, checkpoint_name):
     return annotate_sentence
 
 
-segmenter_model = load_model(os.path.join(data_path, "dragnn/en/segmenter"),
-                             "spec.textproto", "checkpoint")
-parser_model = load_model(os.path.join(data_path, "dragnn/en"),
-                          "parser_spec.textproto", "checkpoint")
+# todo: from . import conf
+from nlp_util import conf
+
+cfg = conf('tensorflow_dragnn_example.conf').get
+lang = 'en'
+
+segmenter_model = load_model(cfg(lang, 'seg_dir'),
+                             cfg(lang, 'seg_master_spec_name'),
+                             cfg(lang, 'seg_checkpoint_name'))
+parser_model = load_model(cfg(lang, 'parser_dir'),
+                          cfg(lang, 'parser_master_spec_name'),
+                          cfg(lang, 'parser_checkpoint_name'))
 
 
 def annotate(text):
@@ -114,7 +120,7 @@ def _trace_explorer(dragnn_trace_str):
     return html
 
 
-def _view_html(html, temp_filename='temp.html'):
+def _browse_html(html, temp_filename='temp.html'):
     import codecs
     import webbrowser
 
@@ -161,9 +167,9 @@ def main():
     # Also try: John is eating pizza with a fork
     pprint(cast(dragnn_sent))
     dependency_tree_html = _parse_tree_explorer(dragnn_sent)
-    _view_html(dependency_tree_html, 'temp_dragnn_tree.html')
+    _browse_html(dependency_tree_html, 'temp_dragnn_tree.html')
     neural_graph_html = _trace_explorer(dragnn_trace_str)
-    _view_html(neural_graph_html, 'temp_dragnn_graph.html')
+    _browse_html(neural_graph_html, 'temp_dragnn_graph.html')
 
 
 if __name__ == '__main__':
