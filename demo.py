@@ -11,8 +11,8 @@ Parse output functions: get_dep_tree, left_edge, right_edge
 """
 # todo: doc
 # todo: provide conll_10 interface
-# todo: import python package -- auto check and print error
-# todo: check model data -- ask if auto downloading gzip and change conf; default = not download
+# todo: import python package -- auto check
+# todo: check model data -- auto config or download gzip
 # TextBlob
 # use NLTK and pattern.en library.
 
