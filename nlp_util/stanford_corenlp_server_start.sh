@@ -9,18 +9,19 @@ set -ue
 set -o pipefail
 
 #set environment
-stanford_corenlp_path="/Volumes/Documents/Projects/~stanford_nlp/stanford-corenlp-full-2016-10-31"
-stanford_corenlp_models="/Volumes/Documents/Projects/~stanford_nlp/stanford-corenlp-models"
+stanford_corenlp_path=$1
+stanford_corenlp_model_path=$2
+lang=$3
 
 # set language
-if [[ $# == 1 ]] && [[ $1 == "zh" ]]; then
-    lang="-serverProperties StanfordCoreNLP-chinese.properties"
+if [[ ${lang} == "zh" ]]; then
+    lang_param="-serverProperties StanfordCoreNLP-chinese.properties"
 else
-    lang=""
+    lang_param=""
 fi
 
 # start server
-java -mx4g -cp "${stanford_corenlp_path}/*:${stanford_corenlp_models}/*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer ${lang} -port 9000 &
+java -mx4g -cp "${stanford_corenlp_path}/*:${stanford_corenlp_model_path}/*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer ${lang_param} -port 9000 &
 exit_code=$?
 
 if [[ ${exit_code} == 0 ]]; then

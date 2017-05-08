@@ -9,7 +9,8 @@ Tag output: tagged_list = [(word, pos, ...), (word, pos, ...), ...]
 Parse output members: tagged_list, dep_list, dep_graph, root_index
 Parse output functions: get_dep_tree, left_edge, right_edge
 """
-# todo: tensorflow_draggn: index, ssplit, zh
+# todo: tensorflow_draggn: segment result, ssplit, zh
+# todo: provide conll_10 interface
 # todo: import python package -- auto check and print error
 # todo: check model data -- ask if auto downloading gzip and change conf; default = not download
 # TextBlob
@@ -54,16 +55,25 @@ For English text
 """
 
 
+def print_parsed_result_en(parsed_sent):
+    from nltk.tree import Tree
+    tagged_list = parsed_sent.tagged_list
+    dep_list = parsed_sent.dep_list
+    dep_tree = parsed_sent.get_dep_tree()
+    pprint(tagged_list)
+    pprint(dep_list)
+    pprint(dep_tree)
+    Tree.fromstring(dep_tree).draw()
+
+
 def demo_nltk_nlp_tag_en():
     from nlp_util import nltk_nlp
-
     for tagged_list in nltk_nlp.tag_with_ssplit(doc_en):
         pprint(tagged_list)
 
 
 def demo_stanford_nltk_tag_en():
     from nlp_util.stanford_nltk_nlp import StanfordNLP
-
     stanford_nlp = StanfordNLP('en')
     tagged_list = stanford_nlp.tag(sent_en)
     pprint(tagged_list)
@@ -71,17 +81,9 @@ def demo_stanford_nltk_tag_en():
 
 def demo_stanford_nltk_parse_en():
     from nlp_util.stanford_nltk_nlp import StanfordNLP
-    from nltk.tree import Tree
-
     stanford_nlp = StanfordNLP('en')
     for parsed_sent in stanford_nlp.parse_with_ssplit(doc_en):
-        tagged_list = parsed_sent.tagged_list
-        dep_list = parsed_sent.dep_list
-        dep_tree = parsed_sent.get_dep_tree()
-        pprint(tagged_list)
-        pprint(dep_list)
-        pprint(dep_tree)
-        Tree.fromstring(dep_tree).draw()
+        print_parsed_result_en(parsed_sent)
 
 
 def demo_stanford_corenlp_tag_en():
@@ -93,30 +95,16 @@ def demo_stanford_corenlp_tag_en():
 
 def demo_stanford_corenlp_parse_en():
     from nlp_util.stanford_corenlp import StanfordNLP
-    from nltk.tree import Tree
     with StanfordNLP('en') as stanford_nlp:
         for parsed_sent in stanford_nlp.parse_with_ssplit(doc_en):
-            tagged_list = parsed_sent.tagged_list
-            dep_list = parsed_sent.dep_list
-            dep_tree = parsed_sent.get_dep_tree()
-            pprint(tagged_list)
-            pprint(dep_list)
-            pprint(dep_tree)
-            Tree.fromstring(dep_tree).draw()
+            print_parsed_result_en(parsed_sent)
 
 
 def demo_stanford_corenlp_parse_en_without_ssplit():
     from nlp_util.stanford_corenlp import StanfordNLP
-    from nltk.tree import Tree
     with StanfordNLP('en') as stanford_nlp:
         for parsed_sent in stanford_nlp.parse(doc_en):
-            tagged_list = parsed_sent.tagged_list
-            dep_list = parsed_sent.dep_list
-            dep_tree = parsed_sent.get_dep_tree()
-            pprint(tagged_list)
-            pprint(dep_list)
-            pprint(dep_tree)
-            Tree.fromstring(dep_tree).draw()
+            print_parsed_result_en(parsed_sent)
 
 
 def demo_spacy_nlp_tag_en():
@@ -131,15 +119,10 @@ def demo_spacy_nlp_parse_en():
     from nltk.tree import Tree
     nlp = SpaCyNLP()
     for parsed_sent in nlp.parse_with_ssplit(doc_en):
-        tagged_list = parsed_sent.tagged_list
-        dep_list = parsed_sent.dep_list
-        dep_tree = parsed_sent.get_dep_tree()
-        pprint(tagged_list)
-        pprint(dep_list)
-        pprint(dep_tree)
-        Tree.fromstring(dep_tree).draw()
         pprint(parsed_sent.dep_graph)
+        print_parsed_result_en(parsed_sent)
         try:
+            tagged_list = parsed_sent.tagged_list
             dep_tree = parsed_sent.get_dep_tree(6)
             Tree.fromstring(dep_tree).draw()
             dep_tree = parsed_sent.get_dep_tree(24)
@@ -166,6 +149,30 @@ def demo_antwerp_nlp_parse_en():
         pprint(rdf_triples)
 
 
+def demo_tf_dragnn_nlp_parse_en():
+    from nlp_util.tensorflow_dragnn_nlp import TfDragnnNLP
+    tf_dragnn_nlp = TfDragnnNLP('en')
+    parsed_sent = tf_dragnn_nlp.parse(sent_en)
+    print_parsed_result_en(parsed_sent)
+
+    dragnn_sent, dragnn_trace_str = tf_dragnn_nlp.annotate("John is eating pizza with a fork")
+    # Also try: John is eating pizza with a fork
+    from nlp_util.tensorflow_dragnn_nlp import ParsedSent
+    # noinspection PyProtectedMember
+    from nlp_util.tensorflow_dragnn_nlp import _parse_tree_explorer
+    # noinspection PyProtectedMember
+    from nlp_util.tensorflow_dragnn_nlp import _trace_explorer
+    # noinspection PyProtectedMember
+    from nlp_util.tensorflow_dragnn_nlp import _browse_html
+    lookup_dict, node_num = ParsedSent.comprehend_dragnn_sent(dragnn_sent)
+    pprint(dragnn_sent)
+    pprint(lookup_dict)
+    pprint(node_num)
+    neural_graph_html = _trace_explorer(dragnn_trace_str)
+    _browse_html(neural_graph_html, 'temp_dragnn_graph.html')
+    dependency_tree_html = _parse_tree_explorer(dragnn_sent)
+    _browse_html(dependency_tree_html, 'temp_dragnn_tree.html')
+
 """
 For Chinese text
 ----------------
@@ -173,73 +180,7 @@ For Chinese text
 """
 
 
-def demo_jieba_nlp_tag_zh():
-    from nlp_util import jieba_nlp
-
-    tagged_list = jieba_nlp.tag(sent_zh)
-    print_result(tagged_list)
-
-
-def demo_jieba_nlp_tag_zh_with_parallel():
-    from nlp_util import jieba_nlp
-    from time import sleep
-    with jieba_nlp.enable_parallel():
-        for i in range(30):
-            tagged_list = jieba_nlp.tag(sent_zh)
-            print_result(tagged_list)
-            sleep(1)
-
-
-def demo_stanford_nltk_tag_zh():
-    from nlp_util.stanford_nltk_nlp import StanfordNLP
-
-    stanford_nlp = StanfordNLP('zh')
-    tagged_list = stanford_nlp.tag(sent_zh)
-    print_result(tagged_list)
-
-
-def demo_stanford_nltk_parse_zh():
-    from nlp_util.stanford_nltk_nlp import StanfordNLP
-    from nltk.tree import Tree
-
-    stanford_nlp = StanfordNLP('zh')
-    try:
-        parsed_sent = stanford_nlp.parse(sent_zh)
-        if parsed_sent:
-            tagged_list = parsed_sent.tagged_list
-            dep_list = parsed_sent.dep_list
-            dep_tree = parsed_sent.get_dep_tree()
-            print_result(tagged_list)
-            pprint(dep_list)
-            print(dep_tree.encode('utf-8'))
-            Tree.fromstring(dep_tree).draw()
-    except UnicodeDecodeError as e:
-        print(e.message)
-
-
-def demo_stanford_corenlp_tag_zh():
-    from nlp_util.stanford_corenlp import StanfordNLP
-    with StanfordNLP('zh') as stanford_nlp:
-        for tagged_list in stanford_nlp.tag_with_ssplit(doc_zh):
-            print_result(tagged_list)
-
-
-def demo_stanford_corenlp_parse_zh():
-    from nlp_util.stanford_corenlp import StanfordNLP
-    from nltk.tree import Tree
-    with StanfordNLP('zh') as stanford_nlp:
-        for parsed_sent in stanford_nlp.parse_with_ssplit(doc_zh):
-            tagged_list = parsed_sent.tagged_list
-            dep_list = parsed_sent.dep_list
-            dep_tree = parsed_sent.get_dep_tree()
-            # pprint(parsed_sent.corenlp_sent)
-            print_result(tagged_list)
-            pprint(dep_list)
-            print(dep_tree.encode('utf-8'))
-            Tree.fromstring(dep_tree).draw()
-
-
-def print_result(tagged_list):
+def print_tagged_result_zh(tagged_list):
     if tagged_list:
         if hasattr(tagged_list[0], '__iter__'):
             tagged_str = ' '.join(['_'.join(token) for token in tagged_list])
@@ -248,13 +189,72 @@ def print_result(tagged_list):
         print(tagged_str)
 
 
+def print_parsed_result_zh(parsed_sent):
+    from nltk.tree import Tree
+    tagged_list = parsed_sent.tagged_list
+    dep_list = parsed_sent.dep_list
+    dep_tree = parsed_sent.get_dep_tree()
+    print_tagged_result_zh(tagged_list)
+    pprint(dep_list)
+    print(dep_tree.encode('utf-8'))
+    Tree.fromstring(dep_tree).draw()
+
+
+def demo_jieba_nlp_tag_zh():
+    from nlp_util import jieba_nlp
+    tagged_list = jieba_nlp.tag(sent_zh)
+    print_tagged_result_zh(tagged_list)
+
+
+def demo_jieba_nlp_tag_zh_with_parallel():
+    from nlp_util import jieba_nlp
+    from time import sleep
+    with jieba_nlp.enable_parallel():
+        for i in range(30):
+            tagged_list = jieba_nlp.tag(sent_zh)
+            print_tagged_result_zh(tagged_list)
+            sleep(1)
+
+
+def demo_stanford_nltk_tag_zh():
+    from nlp_util.stanford_nltk_nlp import StanfordNLP
+    stanford_nlp = StanfordNLP('zh')
+    tagged_list = stanford_nlp.tag(sent_zh)
+    print_tagged_result_zh(tagged_list)
+
+
+def demo_stanford_nltk_parse_zh():
+    from nlp_util.stanford_nltk_nlp import StanfordNLP
+    stanford_nlp = StanfordNLP('zh')
+    try:
+        parsed_sent = stanford_nlp.parse(sent_zh)
+        if parsed_sent:
+            print_parsed_result_zh(parsed_sent)
+    except UnicodeDecodeError as e:
+        print(e.message)
+
+
+def demo_stanford_corenlp_tag_zh():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    with StanfordNLP('zh') as stanford_nlp:
+        for tagged_list in stanford_nlp.tag_with_ssplit(doc_zh):
+            print_tagged_result_zh(tagged_list)
+
+
+def demo_stanford_corenlp_parse_zh():
+    from nlp_util.stanford_corenlp import StanfordNLP
+    with StanfordNLP('zh') as stanford_nlp:
+        for parsed_sent in stanford_nlp.parse_with_ssplit(doc_zh):
+            print_parsed_result_zh(parsed_sent)
+
+
 def show_demo():
     # import nlp_util.xxx
 
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
-    demo_stanford_nltk_parse_zh()
+    demo_stanford_corenlp_parse_en()
 
 
 if __name__ == '__main__':

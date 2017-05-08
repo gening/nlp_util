@@ -182,53 +182,63 @@ class StanfordNLP(object):
             parsed_sent = ParsedSent(nltk_dep_graph)
             # tag ner after parsing
             tagged_list = parsed_sent.tagged_list
-            word_list = zip(*tagged_list)[1]
+            word_list = zip(*tagged_list)[0]
             word_ner_list = self.stanford_ner_tag(word_list)
-            tagged_list = []
-            parsed_sent.tagged_list = [list(token).insert(2, word_ner_list[i][1])
-                                       for i, token in enumerate(tagged_list)]
+            # insert into tagged_list
+            for i in range(len(tagged_list)):
+                tagged_tuple = list(tagged_list[i])
+                tagged_tuple.insert(2, word_ner_list[i][1])
+                tagged_list[i] = tagged_tuple
             # ner tagged
             yield parsed_sent
 
 
-from interface import SentDependencyI
+# CoNLL-U Format
+# http://universaldependencies.org/format.html
+# conll-U = "word \t tag \t head \n word \t tag \t head \n ... \n\n ..."
+# CoNLL-3: word, tag, head
+# CoNLL-4: word, tag, head, rel
+# CoNLL-10: id, word, lemma, ctag, tag, feats, head, rel, deps, misc
+# id = 1 - based inline index
+# 1 They  they PRON  PRP Case=Nom|Number=Plur            2 nsubj 2:nsubj|4:nsubj  _
+# 2 buy   buy  VERB  VBP Number=Plur|Person=3|Tense=Pres 0 root  0:root           _
+# 3 and   and  CONJ  CC  _                               4 cc    4:cc             _
+# 4 sell  sell VERB  VBP Number=Plur|Person=3|Tense=Pres 2 conj  0:root|2:conj    _
+# 5 books book NOUN  NNS Number=Plur                     2 obj   2:obj|4:obj      SpaceAfter=No
+# 6 .     .    PUNCT .   _                               2 punct 2:punct          _
+def _tagged_tuple(token):
+    token_tuple = [token[1],  # word
+                   token[4],  # tag
+                   # token[3],  # ctag == tag
+                   # token[5],  # feats == ''
+                   token[1] if token[2] == '_' else token[2]  # lemma
+                   ]
+    return token_tuple
 
 
-class ParsedSent(SentDependencyI):
+from interface import DependencyGraphI
+
+
+class ParsedSent(DependencyGraphI):
     def __init__(self, nltk_dependency_graph, word_pos_ner_list=None):
+        super(self.__class__, self).__init__(make_leaf=self._leaf_func)
+        # raw result
         self.nltk_dependency_graph = nltk_dependency_graph
         # tokens
         if word_pos_ner_list:
             self.tagged_list = word_pos_ner_list
         else:
-            self.tagged_list = self._set_tagged_list()
+            self.tagged_list = self._build_tagged_list()
         # dependency graph
         node_num = len(self.tagged_list)
-        self.dep_graph = self._set_dep_graph(node_num)
-        self.root_index = self.nltk_dependency_graph.root['address'] - 1
-        super(self.__class__, self).__init__(self.dep_graph, self.root_index,
-                                             make_leaf=self._leaf_func)
+        self.dep_graph, self.root_index = self._build_dep_graph(node_num)
 
-    # CoNLL-U Format
-    # http://universaldependencies.org/format.html
-    # conll-U = "word \t tag \t head \n word \t tag \t head \n ... \n\n ..."
-    # CoNLL-3: word, tag, head
-    # CoNLL-4: word, tag, head, rel
-    # CoNLL-10: id, word, lemma, ctag, tag, feats, head, rel, deps, misc
-    # id = 1 - based inline index
-    # 1 They  they PRON  PRP Case=Nom|Number=Plur            2 nsubj 2:nsubj|4:nsubj  _
-    # 2 buy   buy  VERB  VBP Number=Plur|Person=3|Tense=Pres 0 root  0:root           _
-    # 3 and   and  CONJ  CC  _                               4 cc    4:cc             _
-    # 4 sell  sell VERB  VBP Number=Plur|Person=3|Tense=Pres 2 conj  0:root|2:conj    _
-    # 5 books book NOUN  NNS Number=Plur                     2 obj   2:obj|4:obj      SpaceAfter=No
-    # 6 .     .    PUNCT .   _                               2 punct 2:punct          _
-
-    def _set_tagged_list(self):
-        return map(lambda t: (t[1], t[4], t[1] if t[2] == '_' else t[2]),
+    def _build_tagged_list(self):
+        return map(_tagged_tuple,
                    [token.split('\t') for token
                     in self.nltk_dependency_graph.to_conll(10).split('\n') if token != ''])
 
-    def _set_dep_graph(self, node_num):
+    def _build_dep_graph(self, node_num):
         # change dep_graph_nodes from 1-based to 0-based
         dep_graph_nodes = self.nltk_dependency_graph.nodes
         dep_graph = [dict() for _ in range(node_num)]
@@ -237,11 +247,15 @@ class ParsedSent(SentDependencyI):
             if index == -1:
                 continue
             dep_graph[index]['rel'] = token['rel']
-            dep_graph[index]['head'] = token['head'] - 1
+            dep_graph[index]['head'] = token['head'] - 1 if token['head'] - 1 != -1 else index
             if token['deps']:
                 dep_graph[index]['deps'] = {dep_rel: map(lambda x: x - 1, dep_id_list)
                                             for dep_rel, dep_id_list in token['deps'].items()}
-        return dep_graph
+
+        root_index = self.nltk_dependency_graph.root['address'] - 1
+        if root_index == -1:
+            root_index = None
+        return dep_graph, root_index
 
     def _leaf_func(self, index):
         token = self.nltk_dependency_graph.get_by_address(index + 1)

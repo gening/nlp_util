@@ -21,6 +21,13 @@ import spacy
 
 conf = {'en': 'en_core_web_md'}
 
+def _tagged_tuple(token):
+    token_tuple = [token.text,
+                   token.tag_,
+                   token.ent_iob_,
+                   token.ent_type_,
+                   token.lemma_]
+    return token_tuple
 
 class SpaCyNLP(object):
     def __init__(self, lang='en'):
@@ -36,7 +43,7 @@ class SpaCyNLP(object):
     def tag(self, text):
         # sentence boundary detection requires the dependency parse
         spacy_doc = self.annotate(text, parsing=False)
-        tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_doc]
+        tagged_list = [_tagged_tuple(t) for t in spacy_doc]
         return tagged_list
 
     def parse_with_ssplit(self, doc):
@@ -55,18 +62,17 @@ class ParsedSent(object):
     def __init__(self, spacy_sent):
         self.spacy_sent = spacy_sent
         self._offset = spacy_sent.start
-        self.tagged_list = [(t.text, t.tag_, t.ent_iob_, t.ent_type_, t.lemma_) for t in spacy_sent]
+        self.tagged_list = [_tagged_tuple(t) for t in spacy_sent]
         self.dep_list = [(t.dep_,  # dep name
                           t.head.i - self._offset,  # head
                           t.left_edge.i - self._offset,  # start = left_edge
                           t.right_edge.i - self._offset  # end = right_edge + 1
                           ) for t in spacy_sent]
-        self.dep_graph = self._set_dep_graph(spacy_sent.end - spacy_sent.start)
-        self.root_index = self.spacy_sent.root.i
+        self.dep_graph, self.root_index = self._build_dep_graph(spacy_sent.end - spacy_sent.start)
         self._tree_func = _format_tree
         # self._leaf_func defined as function, which is also an attr of class.
 
-    def _set_dep_graph(self, node_num):
+    def _build_dep_graph(self, node_num):
         # raise NotImplementedError('ParsedSent.')
         dep_graph = [dict() for _ in range(node_num)]
         for spacy_token in self.spacy_sent:
@@ -78,7 +84,9 @@ class ParsedSent(object):
                     dep_graph[index].setdefault('deps', dict()
                                                 ).setdefault(token_dep.dep_, list()
                                                              ).append(token_dep.i - self._offset)
-        return dep_graph
+
+        root_index = self.spacy_sent.root.i
+        return dep_graph, root_index
 
     def left_edge(self, index):
         if index < 0 or index >= self.spacy_sent.end - self.spacy_sent.start:

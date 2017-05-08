@@ -54,29 +54,15 @@ def load_model(base_dir, master_spec_name, checkpoint_name):
         # sess.run('save/restore_all', {'save/Const:0': os.path.join(base_dir, checkpoint_name)})
         builder.saver.restore(sess, os.path.join(base_dir, checkpoint_name))
 
-    def annotate_sentence(sentence):
+    def sent_annotator(sentence):
         with graph.as_default():
             return sess.run([annotator['annotations'], annotator['traces']],
                             feed_dict={annotator['input_batch']: [sentence]})
 
-    return annotate_sentence
+    return sent_annotator
 
 
-# todo: from . import conf
-from nlp_util import conf
-
-cfg = conf('tensorflow_dragnn_example.conf').get
-lang = 'en'
-
-segmenter_model = load_model(cfg(lang, 'seg_dir'),
-                             cfg(lang, 'seg_master_spec_name'),
-                             cfg(lang, 'seg_checkpoint_name'))
-parser_model = load_model(cfg(lang, 'parser_dir'),
-                          cfg(lang, 'parser_master_spec_name'),
-                          cfg(lang, 'parser_checkpoint_name'))
-
-
-def annotate(text):
+def annotate(segmenter_model, parser_model, text):
     sentence = sentence_pb2.Sentence(
         text=text,
         token=[sentence_pb2.Token(word=text, start=-1, end=-1)]
@@ -131,46 +117,107 @@ def _browse_html(html, temp_filename='temp.html'):
     webbrowser.open(url)
 
 
+def _tagged_tuple(token, lookup_dict):
+    tag_dict = lookup_dict[token.start]['tag']
+    if 'fPOS' in tag_dict:
+        ctag, pos = tag_dict['fPOS'].split('++')
+    else:
+        ctag = 'O'
+    token_tuple = [token.word,  # word
+                   pos,  # tag
+                   ctag,  # ctag
+                   '|'.join(['%s=%s' % (k, v) for k, v in tag_dict.items()]),  # feats
+                   token.break_level  # break level
+                   ]
+    return token_tuple
+
+
+from . import conf
+
+cfg = conf('tensorflow_dragnn_example.conf').get
+
+
+class TfDragnnNLP(object):
+    def __init__(self, lang='en'):
+        self._lang = lang
+        self.segmenter_model = load_model(cfg(lang, 'seg_dir'),
+                                          cfg(lang, 'seg_master_spec_name'),
+                                          cfg(lang, 'seg_checkpoint_name'))
+        self.parser_model = load_model(cfg(lang, 'parser_dir'),
+                                       cfg(lang, 'parser_master_spec_name'),
+                                       cfg(lang, 'parser_checkpoint_name'))
+
+    def annotate(self, text):
+        dragnn_sent, dragnn_trace_str = annotate(self.segmenter_model, self.parser_model, text)
+        return dragnn_sent, dragnn_trace_str
+
+    def tag(self, text):
+        dragnn_sent, _ = self.annotate(text)
+        parsed_sent = ParsedSent(dragnn_sent)
+        return parsed_sent.tagged_list
+
+    def parse(self, text):
+        dragnn_sent, _ = self.annotate(text)
+        return ParsedSent(dragnn_sent)
+
+
+from interface import DependencyGraphI
 import re
 
-regex = re.compile('name: "(.*?)" value: "(.*?)"')
+_attr_regex = re.compile('name: "(.*?)" value: "(.*?)"')
 
 
-def cast(dragnn_sent):
-    # docid = dragnn_sent['docid']
-    # text= dragnn_sent['text']
-    tagged_list = []
-    for token in dragnn_sent.token:
-        word = token.word
-        char_start = token.start
-        char_end = token.end
-        char_head = token.head
-        attr_list_str = token.tag
-        tags = {match.group(1): match.group(2)
-                for match in regex.finditer(attr_list_str)}
-        category = token.category
-        label = token.label
-        break_level = token.break_level  # enum type of syntaxnet.Token.BreakLevel
-        token_dict = {'word': word,
-                      'char_start': char_start, 'char_end': char_end, 'char_head': char_head,
-                      'tags': tags,
-                      'category': category,
-                      'dep': label,
-                      'break_level': break_level}
-        tagged_list.append(token_dict)
-    return tagged_list
+class ParsedSent(DependencyGraphI):
+    def __init__(self, dragnn_sent):
+        super(self.__class__, self).__init__(make_leaf=self._leaf_func)
+        # raw result
+        self.dragnn_sent = dragnn_sent
+        self._lookup_dict, node_num = self.comprehend_dragnn_sent(dragnn_sent)
+        # tokens
+        self.tagged_list = self._build_tagged_list(node_num)
+        # dependency graph
+        self.dep_graph, self.root_index = self._build_dep_graph(node_num)
 
+    @classmethod
+    def comprehend_dragnn_sent(cls, dragnn_sent):
+        token_counter = 0
+        # docid = dragnn_sent['docid']
+        # text= dragnn_sent['text']
+        lookup_dict = dict()
+        for token in dragnn_sent.token:
+            token_counter += 1
+            # word = token.word
+            char_pos_start = token.start
+            # char_pos_end = token.end
+            # char_pos_head = token.head
+            attr_list_str = token.tag
+            tag_dict = {match.group(1): match.group(2)
+                        for match in _attr_regex.finditer(attr_list_str)}
+            # category = token.category
+            # label = token.label
+            # break_level = token.break_level  # enum type of syntaxnet.Token.BreakLevel
+            lookup_dict[char_pos_start] = dict()
+            # lookup_dict[char_pos_start]['word'] = word
+            lookup_dict[char_pos_start]['tag'] = tag_dict
+        return lookup_dict, token_counter
 
-def main():
-    from pprint import pprint
-    dragnn_sent, dragnn_trace_str = annotate("John is eating pizza with a fork")
-    # Also try: John is eating pizza with a fork
-    pprint(cast(dragnn_sent))
-    dependency_tree_html = _parse_tree_explorer(dragnn_sent)
-    _browse_html(dependency_tree_html, 'temp_dragnn_tree.html')
-    neural_graph_html = _trace_explorer(dragnn_trace_str)
-    _browse_html(neural_graph_html, 'temp_dragnn_graph.html')
+    def _build_tagged_list(self, node_num):
+        token_list = [[] for _ in range(node_num)]
+        for index, token in enumerate(self.dragnn_sent.token):
+            token_list[index] = _tagged_tuple(token, self._lookup_dict)
+        return token_list
 
+    def _build_dep_graph(self, node_num):
+        # dependency graph
+        self._dep_graph = [dict() for _ in range(node_num)]
+        for index, token in enumerate(self.dragnn_sent.token):
+            dep_index = index
+            dep_rel = token.label
+            head_index = token.head if token.head != -1 else dep_index
+            self._add_dep_arc(dep_index, dep_rel, head_index)
+        return self._dep_graph, self._root_index
 
-if __name__ == '__main__':
-    main()
+    def _leaf_func(self, index):
+        token = self.tagged_list[index]
+        # noinspection PyCompatibility
+        return '/'.join([token[0], token[1]]).replace('(', u'（').replace('(', u'）')
