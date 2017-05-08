@@ -10,11 +10,18 @@ For demo:
 https://github.com/tensorflow/models/blob/master/syntaxnet/
 examples/dragnn/interactive_text_analyzer.ipynb
 
+For model (named ParseySaurus):
+https://github.com/tensorflow/models/tree/master/syntaxnet/g3doc/conll2017
+
 For trainning: 
 https://github.com/tensorflow/models/blob/master/syntaxnet/
 examples/dragnn/trainer_tutorial.ipynb
 
 """
+
+from . import conf
+
+cfg = conf('tensorflow_dragnn.conf').get
 
 import os
 import tensorflow as tf
@@ -123,18 +130,22 @@ def _tagged_tuple(token, lookup_dict):
         ctag, pos = tag_dict['fPOS'].split('++')
     else:
         ctag = 'O'
+        pos = 'O'
     token_tuple = [token.word,  # word
                    pos,  # tag
                    ctag,  # ctag
                    '|'.join(['%s=%s' % (k, v) for k, v in tag_dict.items()]),  # feats
-                   token.break_level  # break level
+                   token.break_level  # break level name: BREAK_LEVEL[token.break_level]
                    ]
     return token_tuple
 
 
-from . import conf
-
-cfg = conf('tensorflow_dragnn_example.conf').get
+BREAK_LEVEL = {
+    0: 'NO_BREAK',  # No separation between tokens.
+    1: 'SPACE_BREAK',  # Tokens separated by space.
+    2: 'LINE_BREAK',  # Tokens separated by line break.
+    3: 'SENTENCE_BREAK',  # Tokens separated by sentence break.
+}
 
 
 class TfDragnnNLP(object):
@@ -164,8 +175,6 @@ class TfDragnnNLP(object):
 from interface import DependencyGraphI
 import re
 
-_attr_regex = re.compile('name: "(.*?)" value: "(.*?)"')
-
 
 class ParsedSent(DependencyGraphI):
     def __init__(self, dragnn_sent):
@@ -180,6 +189,9 @@ class ParsedSent(DependencyGraphI):
 
     @classmethod
     def comprehend_dragnn_sent(cls, dragnn_sent):
+        # Type definition see:
+        # https://github.com/tensorflow/models/blob/master/syntaxnet/syntaxnet/sentence.proto
+        _attr_regex = re.compile('name: "(.*?)" value: "(.*?)"')
         token_counter = 0
         # docid = dragnn_sent['docid']
         # text= dragnn_sent['text']

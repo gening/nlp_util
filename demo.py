@@ -9,7 +9,7 @@ Tag output: tagged_list = [(word, pos, ...), (word, pos, ...), ...]
 Parse output members: tagged_list, dep_list, dep_graph, root_index
 Parse output functions: get_dep_tree, left_edge, right_edge
 """
-# todo: tensorflow_draggn: segment result, ssplit, zh
+# todo: doc
 # todo: provide conll_10 interface
 # todo: import python package -- auto check and print error
 # todo: check model data -- ask if auto downloading gzip and change conf; default = not download
@@ -152,8 +152,10 @@ def demo_antwerp_nlp_parse_en():
 def demo_tf_dragnn_nlp_parse_en():
     from nlp_util.tensorflow_dragnn_nlp import TfDragnnNLP
     tf_dragnn_nlp = TfDragnnNLP('en')
-    parsed_sent = tf_dragnn_nlp.parse(sent_en)
-    print_parsed_result_en(parsed_sent)
+    # noinspection PyShadowingNames
+    for sent_en in doc_en.replace('\n', '').split('. '):
+        parsed_sent = tf_dragnn_nlp.parse(sent_en)
+        print_parsed_result_en(parsed_sent)
 
     dragnn_sent, dragnn_trace_str = tf_dragnn_nlp.annotate("John is eating pizza with a fork")
     # Also try: John is eating pizza with a fork
@@ -173,6 +175,7 @@ def demo_tf_dragnn_nlp_parse_en():
     dependency_tree_html = _parse_tree_explorer(dragnn_sent)
     _browse_html(dependency_tree_html, 'temp_dragnn_tree.html')
 
+
 """
 For Chinese text
 ----------------
@@ -183,7 +186,7 @@ For Chinese text
 def print_tagged_result_zh(tagged_list):
     if tagged_list:
         if hasattr(tagged_list[0], '__iter__'):
-            tagged_str = ' '.join(['_'.join(token) for token in tagged_list])
+            tagged_str = ' '.join(['_'.join(map(unicode, token)) for token in tagged_list])
         else:
             tagged_str = ' '.join(tagged_list)
         print(tagged_str)
@@ -248,6 +251,18 @@ def demo_stanford_corenlp_parse_zh():
             print_parsed_result_zh(parsed_sent)
 
 
+def demo_tf_dragnn_nlp_parse_zh():
+    from nlp_util.tensorflow_dragnn_nlp import TfDragnnNLP
+    tf_dragnn_nlp = TfDragnnNLP('zh')
+    # noinspection PyCompatibility, PyShadowingNames
+    for sent_zh in doc_zh.replace('\n', '').split(u'。'):
+        sent_zh = sent_zh.strip()
+        if sent_zh != '':
+            # noinspection PyCompatibility
+            parsed_sent = tf_dragnn_nlp.parse(sent_zh + u'。')
+            print_parsed_result_zh(parsed_sent)
+
+
 def show_demo():
     # import nlp_util.xxx
 
@@ -258,4 +273,5 @@ def show_demo():
 
 
 if __name__ == '__main__':
-    show_demo()
+    demo_stanford_corenlp_parse_zh()
+    demo_tf_dragnn_nlp_parse_zh()
