@@ -37,7 +37,6 @@ class StanfordNLP(object):
         self._lang = lang
         self._stanford_nlp = StanfordCoreNLP(server_url)
 
-
     def __enter__(self):
         stanford_corenlp_path = cfg('corenlp', 'path_base')
         stanford_corenlp_model_path = cfg('corenlp_model', 'path_base')
@@ -78,19 +77,19 @@ class StanfordNLP(object):
         if parsing:
             # Must deparse to load model from edu/stanford/nlp/models/parser/nndep/ for Chinese
             # otherwise dependency parsing Chinese sentences will raise a "no head rule" error.
-            conf = 'tokenize, ssplit, pos, lemma, ner, depparse'
+            annotators = 'tokenize, ssplit, pos, lemma, ner, depparse'
             # Note:
             # `coref` must be used with `parse` together for Chinese
             # `dcoref` here does not work for Chinese
             # e.g.
-            # conf = ('tokenize, ssplit, pos, lemma, ner, depparse, '
-            #         'parse, coref')  # cause timeout
+            # annotators = ('tokenize, ssplit, pos, lemma, ner, depparse, '
+            #               'parse, coref')  # cause timeout
         else:
-            conf = 'tokenize, ssplit, pos, lemma, ner'
+            annotators = 'tokenize, ssplit, pos, lemma, ner'
 
         # call stanford corenlp server
         corenlp_doc = self._stanford_nlp.annotate(doc, properties={
-            'annotators': conf,
+            'annotators': annotators,
             'outputFormat': 'json'
         })
 

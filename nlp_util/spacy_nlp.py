@@ -21,6 +21,7 @@ import spacy
 
 conf = {'en': 'en_core_web_md'}
 
+
 def _tagged_tuple(token):
     token_tuple = [token.text,
                    token.tag_,
@@ -28,6 +29,7 @@ def _tagged_tuple(token):
                    token.ent_type_,
                    token.lemma_]
     return token_tuple
+
 
 class SpaCyNLP(object):
     def __init__(self, lang='en'):

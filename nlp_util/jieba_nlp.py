@@ -17,11 +17,7 @@ from jieba import posseg
 
 
 def tag(text):
-    """
-    
-    :param text: 
-    :return: [(word, pos), ...]
-    """
+    # return: [(word, pos), ...]
     word_pos_list = [(word, pos) for word, pos in posseg.cut(text)]
     return word_pos_list
 

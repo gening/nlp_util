@@ -33,11 +33,7 @@ def annotate(text, parsing=True):
 
 
 def tag_with_ssplit(doc):
-    """
-    
-    :param doc: 
-    :return: yield [(word, pos, chunk, pnp-chunk, lemma), ...] of a sentence
-    """
+    # return: yield [(word, pos, chunk, pnp-chunk, lemma), ...] of a sentence
     tagged_str = annotate(doc, parsing=False)
     tagged_sents = tagged_str.split()
     # With chunks=True

@@ -249,9 +249,11 @@ class ParsedSent(DependencyGraphI):
             dep_graph[index]['rel'] = token['rel']
             dep_graph[index]['head'] = token['head'] - 1 if token['head'] - 1 != -1 else index
             if token['deps']:
-                dep_graph[index]['deps'] = {dep_rel: map(lambda x: x - 1, dep_id_list)
-                                            for dep_rel, dep_id_list in token['deps'].items()}
-
+                # dep_graph[index]['deps'] = {dep_rel: map(lambda x: x - 1, dep_id_list)
+                #                             for dep_rel, dep_id_list in token['deps'].items()}
+                dep_graph[index]['deps'] = dict()
+                for dep_rel, dep_id_list in token['deps'].items():
+                    dep_graph[index]['deps'][dep_rel] = map(lambda x: x - 1, dep_id_list)
         root_index = self.nltk_dependency_graph.root['address'] - 1
         if root_index == -1:
             root_index = None

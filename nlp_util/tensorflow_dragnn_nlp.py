@@ -203,8 +203,11 @@ class ParsedSent(DependencyGraphI):
             # char_pos_end = token.end
             # char_pos_head = token.head
             attr_list_str = token.tag
-            tag_dict = {match.group(1): match.group(2)
-                        for match in _attr_regex.finditer(attr_list_str)}
+            # tag_dict = {match.group(1): match.group(2)
+            #             for match in _attr_regex.finditer(attr_list_str)}
+            tag_dict = dict()
+            for match in _attr_regex.finditer(attr_list_str):
+                tag_dict[match.group(1)] = match.group(2)
             # category = token.category
             # label = token.label
             # break_level = token.break_level  # enum type of syntaxnet.Token.BreakLevel

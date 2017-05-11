@@ -20,11 +20,7 @@ from nltk import word_tokenize
 
 
 def tag_with_ssplit(doc):
-    """
-    
-    :param doc: 
-    :return: yield [(word, pos, chunk_ner, lemma), ...] of a sentence
-    """
+    # return: yield [(word, pos, chunk_ner, lemma), ...] of a sentence
     for sent in sent_tokenize(doc):
         # nltk.download()  # models/punkt
         word_list = word_tokenize(sent)

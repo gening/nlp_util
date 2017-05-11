@@ -1,9 +1,9 @@
 # coding: utf-8
 
 """
-Utility Tools for Stanford CoreNLP Server
-=========================================
-Interfaces
+Interfaces of the package
+=========================
+Dependency Graph
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"

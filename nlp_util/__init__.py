@@ -1,3 +1,16 @@
+# coding: utf-8
+
+"""
+Initialize the package 
+======================
+Load config file
+"""
+
+__author__ = "GE Ning <https://github.com/gening/>"
+__copyright__ = "Copyright (C) 2017 GE Ning"
+__license__ = "LGPL-3.0"
+__version__ = "1.0"
+
 import sys
 
 import codecs
@@ -9,10 +22,13 @@ if sys.version_info[0] == 2:  # python 2
 elif sys.version_info[0] == 3:  # python 3
     # noinspection PyCompatibility,PyUnresolvedReferences
     from configparser import ConfigParser
-# SafeConfigParser supports interpolation.
-# This means values can contain format strings which refer to other values in the same section,
-# or values in a special DEFAULT section.
+
 """
+ConfigParser supports interpolation.
+
+This means values can contain format strings which refer to other values in the same section,
+or values in a special DEFAULT section.
+
 For example:
 
 [My Section]
@@ -36,8 +52,6 @@ def conf(conf_filename):
     with codecs.open(path.join(path.dirname(__file__), 'conf', conf_filename),
                      'r', encoding='utf-8') as f:
         config.readfp(f)
-    # if not config.has_section('default'):
-    #    config.add_section('default')
     if not config.has_option('DEFAULT', 'data_dir'):
         data_dir = path.join(path.dirname(__file__), 'data')
         config.set('DEFAULT', 'data_dir', data_dir)
