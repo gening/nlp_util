@@ -3,7 +3,8 @@
 """
 Interfaces of the package
 =========================
-Dependency Graph
+Dependency graph class
+Extract feature trees, and the similarity between trees. 
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"
@@ -198,3 +199,106 @@ def _format_tree(root_label, subtree_list):
 
 def _format_leaf(index):
     return str(index)
+
+
+def get_feature_trees(tree_str, sorting=False):
+    # when importing a module, python will lookup sys.modules.
+    # if the module has already been imported, python will skip the import statement.
+    from collections import defaultdict
+    from nltk.tree import Tree
+    # for the definition of feature tree, please see:
+    # http://disi.unitn.it/moschitti/Tree-Kernel.htm
+    # http://papers.nips.cc/paper/2089-convolution-kernels-for-natural-language.pdf
+    this_tree = Tree.fromstring(tree_str)
+    # global variable
+    # result: list(tuple) = [(address, tree), ...]
+    results = []
+    # index: dict(list), the index of a tree in results -> feet
+    index = defaultdict(list)
+    # inverted_index(倒排索引): dict(list), tail address -> the indices of trees
+    inverted_index = defaultdict(list)
+
+    # add tail to the existing trees via index
+    def expand_trees(tree, address):
+        if tree.height() < 2:
+            pass
+        elif tree.height() == 2:
+            tree_element = tree
+            results.append((address, tree_element))
+            # install the tail to the applicable trees
+            for ii in inverted_index[address]:
+                existing_tree_address, existing_tree = results[ii]
+                new_tree = existing_tree.copy(deep=True)
+                # existing_tree_address: (0, 0)
+                # address: (0, 0, 1)
+                new_tree[address[len(existing_tree_address):]] = tree_element
+                results.append((existing_tree_address, new_tree))
+                # update index with other tails
+                # no need to update index with its tails
+                new_tree_pos = len(results) - 1
+                for tail_address in index[ii]:
+                    if tail_address != address:
+                        index[new_tree_pos].append(tail_address)
+                        inverted_index[tail_address].append(new_tree_pos)
+        else:
+            root = tree.label()
+            children = [tree[ii].label() for ii in range(len(tree))]
+            tree_element = Tree(root, children)
+            results.append((address, tree_element))
+            tree_pos = len(results) - 1
+            # install the tail to the applicable trees
+            for ii in inverted_index[address]:
+                existing_tree_address, existing_tree = results[ii]
+                new_tree = existing_tree.copy(deep=True)
+                # existing_tree_address: (0, 0)
+                # address: (0, 0, 1)
+                new_tree[address[len(existing_tree_address):]] = tree_element
+                results.append((existing_tree_address, new_tree))
+                # update index with other tails
+                new_tree_pos = len(results) - 1
+                for tail_address in index[ii]:
+                    if tail_address != address:
+                        index[new_tree_pos].append(tail_address)
+                        inverted_index[tail_address].append(new_tree_pos)
+            # update index with its tails
+            for ii in range(len(tree)):
+                sub_tree_address = tuple(list(address) + [ii])
+                for jj in range(tree_pos, len(results)):
+                    index[jj].append(sub_tree_address)
+                    inverted_index[sub_tree_address].append(jj)
+
+    # Breadth-First-Search
+    queue = [(this_tree, tuple())]  # (tree, root_address)
+    while len(queue) > 0:
+        this_tree, this_address = queue.pop(0)
+        if isinstance(this_tree, Tree):
+            expand_trees(this_tree, this_address)
+            # decompose
+            if this_tree.height() > 2:
+                for sub_tree_index in range(len(this_tree)):
+                    next_tree = this_tree[sub_tree_index]
+                    next_address = tuple(list(this_address) + [sub_tree_index])
+                    queue.append((next_tree, next_address))
+    if sorting:
+        results = sorted(results)
+    return map(str, zip(*results)[1])
+
+
+def calc_tree_similarity(tree_str1, tree_str2):
+    if tree_str1 == tree_str2:
+        return 1.00
+    else:
+        i = 0
+        fea_set1 = get_feature_trees(tree_str1)
+        fea_set2 = get_feature_trees(tree_str2)
+        len1 = len(fea_set1)
+        len2 = len(fea_set2)
+        if len1 <= len2:
+            for fea in fea_set1:
+                if fea in fea_set2:
+                    i += 1
+        else:
+            for fea in fea_set2:
+                if fea in fea_set1:
+                    i += 1
+        return 2.00 * i / (len1 - 1 + len2 - 1)

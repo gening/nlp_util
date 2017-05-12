@@ -470,6 +470,16 @@ def test_stanford_corenlp_parse():
     Tree.fromstring(dep_tree).draw()
 
 
+def test_feature_trees():
+    from nlp_util.interface import get_feature_trees
+    from nlp_util.interface import calc_tree_similarity
+    t = '(S (NP (D a) (N dog)) (VP (V chased) (NP (D the) (N cat))))'
+    s = '(S (NP (D the) (N dog)) (VP (V chased) (NP (D the) (N cat))))'
+    pprint(get_feature_trees(t))
+    print(calc_tree_similarity(t, s))
+    pass
+
+
 if __name__ == '__main__':
     # import nlp_util.xxx
 
