@@ -202,13 +202,15 @@ def _format_leaf(index):
 
 
 def get_feature_trees(tree_str, sorting=False):
+    # For the definition of feature tree, please see:
+    # http://disi.unitn.it/moschitti/Tree-Kernel.htm
+    # http://papers.nips.cc/paper/2089-convolution-kernels-for-natural-language.pdf
+    # A given tree will have a number of subtrees that is exponential in its size.
+
     # when importing a module, python will lookup sys.modules.
     # if the module has already been imported, python will skip the import statement.
     from collections import defaultdict
     from nltk.tree import Tree
-    # for the definition of feature tree, please see:
-    # http://disi.unitn.it/moschitti/Tree-Kernel.htm
-    # http://papers.nips.cc/paper/2089-convolution-kernels-for-natural-language.pdf
     this_tree = Tree.fromstring(tree_str)
     # global variable
     # result: list(tuple) = [(address, tree), ...]
@@ -288,17 +290,16 @@ def calc_tree_similarity(tree_str1, tree_str2):
     if tree_str1 == tree_str2:
         return 1.00
     else:
-        i = 0
+        # make sure: similarity(s, t) == similarity(t, s)
+        j = i = 0
         fea_set1 = get_feature_trees(tree_str1)
         fea_set2 = get_feature_trees(tree_str2)
         len1 = len(fea_set1)
         len2 = len(fea_set2)
-        if len1 <= len2:
-            for fea in fea_set1:
-                if fea in fea_set2:
-                    i += 1
-        else:
-            for fea in fea_set2:
-                if fea in fea_set1:
-                    i += 1
-        return 2.00 * i / (len1 - 1 + len2 - 1)
+        for fea in fea_set1:
+            if fea in fea_set2:
+                i += 1
+        for fea in fea_set2:
+            if fea in fea_set1:
+                j += 1
+        return 1.00 * (i + j) / (len1 - 1 + len2 - 1)

@@ -477,7 +477,6 @@ def test_feature_trees():
     s = '(S (NP (D the) (N dog)) (VP (V chased) (NP (D the) (N cat))))'
     pprint(get_feature_trees(t))
     print(calc_tree_similarity(t, s))
-    pass
 
 
 if __name__ == '__main__':
@@ -486,6 +485,6 @@ if __name__ == '__main__':
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # test()
-    test_stanford_nltk_parse()
+    test_feature_trees()
 
     pass
