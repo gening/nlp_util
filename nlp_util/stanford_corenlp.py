@@ -5,7 +5,8 @@ Utility Tools for Stanford CoreNLP Server
 =========================================
 https://stanfordnlp.github.io/CoreNLP/
 
-Stanford CoreNLP – Core natural language software
+Stanford CoreNLP – Core natural language software, 
+developed by The Natural Language Processing Group at Stanford University, US
 """
 
 __author__ = "GE Ning <https://github.com/gening/>"
@@ -17,7 +18,7 @@ import sys
 
 import os
 
-from pycorenlp import StanfordCoreNLP
+import pycorenlp
 from . import conf
 
 cfg = conf('stanford_nlp.conf').get
@@ -35,7 +36,7 @@ def _tagged_tuple(token):
 class StanfordNLP(object):
     def __init__(self, lang='en', server_url='http://localhost:9000'):  # lang = 'zh'
         self._lang = lang
-        self._stanford_nlp = StanfordCoreNLP(server_url)
+        self._stanford_nlp = pycorenlp.StanfordCoreNLP(server_url)
 
     def __enter__(self):
         stanford_corenlp_path = cfg('corenlp', 'path_base')
@@ -152,14 +153,15 @@ class ParsedSent(DependencyGraphI):
         corenlp_dep = self.corenlp_sent['enhancedPlusPlusDependencies']
 
         # dependency graph
+        root_index = None
         self._dep_graph = [dict() for _ in range(node_num)]
         for d in corenlp_dep:
             dep_index = d['dependent'] - 1
             dep_rel = d['dep']
             head_index = d['governor'] - 1 if d['governor'] - 1 != -1 else dep_index
             # option `enhancedPlusPlusDependencies` may cause one mapped to two heads.
-            self._add_dep_arc(dep_index, dep_rel, head_index)
-        return self._dep_graph, self._root_index
+            root_index = self._add_dep_arc(dep_index, dep_rel, head_index)
+        return self._dep_graph, root_index
 
     def _leaf_func(self, index):
         token = self.tagged_list[index]

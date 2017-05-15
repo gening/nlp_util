@@ -219,6 +219,20 @@ def demo_jieba_nlp_tag_zh_with_parallel():
             sleep(1)
 
 
+def demo_hit_nlp_tag_zh():
+    from nlp_util.hit_nlp import HITNLP
+    with HITNLP() as hit_nlp:
+        for tagged_list in hit_nlp.tag_with_ssplit(doc_zh):
+            print_tagged_result_zh(tagged_list)
+
+
+def demo_hit_nlp_parse_zh():
+    from nlp_util.hit_nlp import HITNLP
+    with HITNLP() as hit_nlp:
+        for parsed_sent in hit_nlp.parse_with_ssplit(doc_zh):
+            print_parsed_result_zh(parsed_sent)
+
+
 def demo_stanford_nltk_tag_zh():
     from nlp_util.stanford_nltk_nlp import StanfordNLP
     stanford_nlp = StanfordNLP('zh')
@@ -269,9 +283,8 @@ def show_demo():
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
-    demo_stanford_corenlp_parse_en()
+    demo_hit_nlp_parse_zh()
 
 
 if __name__ == '__main__':
-    demo_stanford_corenlp_parse_zh()
-    demo_tf_dragnn_nlp_parse_zh()
+    show_demo()

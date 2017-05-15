@@ -77,6 +77,7 @@ class DependencyGraphI(object):
             self._dep_graph[head_index].setdefault(
                 'deps', dict()).setdefault(
                 dep_rel, list()).append(dep_index)
+        return self._root_index
 
     @property
     def _node_num(self):
