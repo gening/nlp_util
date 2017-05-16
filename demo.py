@@ -220,10 +220,19 @@ def demo_jieba_nlp_tag_zh_with_parallel():
 
 
 def demo_hit_nlp_tag_zh():
+    import sys
+    import time
     from nlp_util.hit_nlp import HITNLP
     with HITNLP() as hit_nlp:
-        for tagged_list in hit_nlp.tag_with_ssplit(doc_zh):
-            print_tagged_result_zh(tagged_list)
+        texts = [doc_zh, sent_zh]
+        iter_texts = (texts[i % 2] for i in range(400))
+        print(time.ctime())
+        for i, text in enumerate(iter_texts):
+            for tagged_list in hit_nlp.tag_with_ssplit(text):
+                sys.stdout.write('%3d\t' % i)
+                print_tagged_result_zh(tagged_list)
+                pass
+        print(time.ctime())
 
 
 def demo_hit_nlp_parse_zh():
@@ -269,11 +278,11 @@ def demo_tf_dragnn_nlp_parse_zh():
     from nlp_util.tensorflow_dragnn_nlp import TfDragnnNLP
     tf_dragnn_nlp = TfDragnnNLP('zh')
     # noinspection PyCompatibility, PyShadowingNames
-    for sent_zh in doc_zh.replace('\n', '').split(u'。'):
-        sent_zh = sent_zh.strip()
-        if sent_zh != '':
+    for sent_chi in doc_zh.replace('\n', '').split(u'。'):
+        sent_chi = sent_chi.strip()
+        if sent_chi != '':
             # noinspection PyCompatibility
-            parsed_sent = tf_dragnn_nlp.parse(sent_zh + u'。')
+            parsed_sent = tf_dragnn_nlp.parse(sent_chi + u'。')
             print_parsed_result_zh(parsed_sent)
 
 
@@ -283,7 +292,9 @@ def show_demo():
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
-    demo_hit_nlp_parse_zh()
+    demo = 'demo_hit_nlp_tag_zh'
+    import timeit
+    print(timeit.timeit(demo + '()', setup='from __main__ import ' + demo, number=1))
 
 
 if __name__ == '__main__':
