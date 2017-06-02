@@ -13,6 +13,12 @@ __copyright__ = "Copyright (C) 2017 GE Ning"
 __license__ = "LGPL-3.0"
 __version__ = "1.0"
 
+from nltk import data
+
+from . import conf
+
+data.path.append(conf('nltk_nlp.conf').get('model', 'path_base').encode('utf-8'))
+
 from nltk import chunk
 from nltk import pos_tag
 from nltk import sent_tokenize
