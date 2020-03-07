@@ -292,7 +292,7 @@ def show_demo():
     # noinspection PyCompatibility
     # reload(nlp_util.xxx)
     # demo()
-    demo = 'demo_nltk_nlp_tag_en'
+    demo = 'demo_stanford_corenlp_parse_en'
     import timeit
     print(timeit.timeit(demo + '()', setup='from __main__ import ' + demo, number=1))
 
